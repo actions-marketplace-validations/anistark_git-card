@@ -400,6 +400,14 @@ section + section {
 .profile-head .title {
   margin-top: var(--sp-2);
 }
+.profile-role {
+  display: inline-block;
+  margin-top: var(--sp-1);
+  text-decoration: none;
+}
+.profile-role:hover {
+  text-decoration: underline;
+}
 .profile-hud {
   margin: var(--sp-2) 0 0;
   font-size: var(--t-caption);

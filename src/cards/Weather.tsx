@@ -3,6 +3,7 @@
 // on its own: rain mid-fall, a bolt mid-strike, bursts open.
 
 import type { Weather } from '../lib/weather';
+import { seeded } from '../lib/seeded';
 
 export type Pt = [number, number];
 export interface Box {
@@ -34,18 +35,6 @@ export interface CityView {
 const r = (n: number) => Math.round(n * 10) / 10;
 const pts = (list: Pt[]) => list.map(([x, y]) => `${r(x)},${r(y)}`).join(' ');
 
-/** Small seeded generator (mulberry32), so the same login always gets the same stars and rain. */
-function random(seed: string) {
-  let a = 2166136261;
-  for (const c of seed) a = Math.imul(a ^ c.charCodeAt(0), 16777619);
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 /** Where the back edge of the floor is at x: the horizon the sky ends at. */
 function horizon(view: CityView) {
   const [x0, y0] = view.at(-1, -0.1);
@@ -74,7 +63,7 @@ export function WeatherBack({ weather, view }: { weather: Weather; view: CityVie
 /** On the sea tiles, under the towers, in city units: glints where the rain lands. */
 export function WeatherGround({ weather, tiles, seed }: { weather: Weather; tiles: Pt[][]; seed: string }) {
   if (weather.state !== 'rain' && weather.state !== 'storm') return null;
-  const rand = random(`${seed}:glint`);
+  const rand = seeded(`${seed}:glint`);
   const picked = tiles.filter(() => rand() < 0.12).slice(0, 18);
   return (
     <g aria-hidden="true">
@@ -117,7 +106,7 @@ export function WeatherClip({ view }: { view: CityView }) {
 }
 
 function Stars({ view, count = 34 }: { view: CityView; count?: number }) {
-  const rand = random(`${view.seed}:stars`);
+  const rand = seeded(`${view.seed}:stars`);
   const edge = horizon(view);
   const { x, y, w } = view.sky;
   const stars: { x: number; y: number; s: number; d: number }[] = [];
@@ -162,7 +151,7 @@ function Searchlight({ view }: { view: CityView }) {
 
 /** Low, slow clouds along the top of the sky. */
 function Clouds({ view }: { view: CityView }) {
-  const rand = random(`${view.seed}:clouds`);
+  const rand = seeded(`${view.seed}:clouds`);
   const { x, y, w } = view.sky;
   return (
     <g className="gc-wx-cloud" filter="url(#gc-f-fog)">
@@ -190,7 +179,7 @@ function Rain({ view, heavy = false }: { view: CityView; heavy?: boolean }) {
   return (
     <g>
       {layers.map((layer, l) => {
-        const rand = random(`${view.seed}:rain${l}`);
+        const rand = seeded(`${view.seed}:rain${l}`);
         const rows = Math.ceil(h / layer.period) + 1;
         const span = w + rows * layer.period * slant + 40;
         const tile = Array.from({ length: Math.round((span / 760) * layer.per * 4) }, () => ({
@@ -276,7 +265,7 @@ const BURSTS = ['gc-accent-s', 'gc-data-s', 'gc-hot-s'];
 
 /** Bursts over the newest weeks, one after another, each clear of the roofs below it. */
 function Fireworks({ view }: { view: CityView }) {
-  const rand = random(`${view.seed}:fireworks`);
+  const rand = seeded(`${view.seed}:fireworks`);
   const { x, y, w } = view.sky;
   const roofs = [...view.roofs.values()];
   const right = view.at(view.weeks - 1, 3);

@@ -53,6 +53,23 @@ async function siteOg(path: string) {
   console.log(`site preview -> ${path}`);
 }
 
+/** The avatar as a data URI. README images cannot load remote files, so cards that show it need it embedded. */
+async function avatarData(url: string, px = 224): Promise<string | undefined> {
+  if (!url) return undefined;
+  try {
+    const sized = new URL(url);
+    sized.searchParams.set('s', String(px));
+    const res = await fetch(sized);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const type = res.headers.get('content-type') ?? 'image/png';
+    return `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`;
+  } catch (err) {
+    // The card falls back to a generated face, so a missing avatar is not worth failing the run over.
+    console.warn(`Avatar for ${url} not embedded: ${(err as Error).message}`);
+    return undefined;
+  }
+}
+
 async function cards(users: string[]) {
   const token = process.env.GITHUB_TOKEN;
   if (!token) throw new Error('GITHUB_TOKEN is required to render cards. In Actions, pass ${{ github.token }}.');
@@ -68,13 +85,14 @@ async function cards(users: string[]) {
   const index: { generatedAt: string; users: Record<string, { cards: string[] }> } = { generatedAt: new Date().toISOString(), users: {} };
   for (const login of users) {
     const profile = await fetchProfileGraphQL(login, token);
+    const avatar = wanted.includes('citizen') ? await avatarData(profile.avatarUrl) : undefined;
     const dir = values.flat ? values.out! : join(values.out!, profile.login.toLowerCase());
     mkdirSync(dir, { recursive: true });
     for (const id of wanted as CardId[]) {
       const { Component } = getCard(id)!;
       for (const theme of themes) {
         const file = join(dir, `${id}${theme === 'auto' ? '' : `-${theme}`}.svg`);
-        writeFileSync(file, renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true, weather })));
+        writeFileSync(file, renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true, weather, avatar })));
       }
     }
     index.users[profile.login.toLowerCase()] = { cards: wanted };

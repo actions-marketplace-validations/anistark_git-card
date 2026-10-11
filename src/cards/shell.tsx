@@ -29,6 +29,8 @@ export interface CardProps {
   calendarLoading?: boolean;
   /** Weather over the skyline. On unless set to false. */
   weather?: boolean;
+  /** The avatar as a data URI, for standalone SVGs, which cannot load remote images. Defaults to the profile's URL. */
+  avatar?: string;
 }
 
 export const SIZES = {

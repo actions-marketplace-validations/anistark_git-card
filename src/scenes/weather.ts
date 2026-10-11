@@ -28,6 +28,7 @@ import {
   type Material,
 } from 'three';
 import type { WeatherState } from '../lib/weather';
+import { seeded } from '../lib/seeded';
 
 export interface WeatherPalette {
   rain: Color;
@@ -62,18 +63,6 @@ export interface WeatherScene {
   dispose(): void;
 }
 
-/** Small seeded generator (mulberry32), so the same login always gets the same scatter. */
-function random(seed: string) {
-  let a = 2166136261;
-  for (const c of seed) a = Math.imul(a ^ c.charCodeAt(0), 16777619);
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 /** A soft white blob on a transparent canvas, for star points, sparks, clouds and fog sheets. */
 function softTexture(w = 64, h = 64) {
   const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
@@ -103,7 +92,7 @@ function strikeAt(seconds: number): number {
 
 export function addWeather(city: Group, camera: PerspectiveCamera, fog: Fog, setup: WeatherSetup): WeatherScene {
   const { state, reach, still } = setup;
-  const rand = random(`${setup.seed}:3d`);
+  const rand = seeded(`${setup.seed}:3d`);
   const disposables: { dispose(): void }[] = [];
   const own = <T extends { dispose(): void }>(thing: T) => (disposables.push(thing), thing);
   const blended: Material[] = [];

@@ -1,10 +1,11 @@
 import { useEffect, useId, useState } from 'react';
 import { getCard, type CardId } from '../cards/registry';
 import { SIZES } from '../cards/shell';
-import { LIGHT_THEME, standaloneCss, THEME_CHOICES, type Theme } from '../cards/style';
+import { LIGHT_THEME, THEME_CHOICES, type Theme } from '../cards/style';
 import { SITE } from '../site';
 import { track } from '../lib/analytics';
 import { absolute, urls } from '../lib/urls';
+import { cardPng, cardSvg, download } from './export';
 
 // ---- Hosted snapshots ------------------------------------------------------------------------
 // The Pages workflow pre-renders cards for the logins in SNAPSHOT_USERS and publishes an index.
@@ -30,28 +31,6 @@ function useHosted(login: string, card: CardId): boolean {
     };
   }, [login, card]);
   return hosted;
-}
-
-// ---- Standalone SVG from the card already on the page ----------------------------------------------
-
-/** The inline card inherits page styles. A file needs its own tokens, size and namespace. */
-export function standaloneSvg(svg: SVGSVGElement, theme: Theme): string {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  const { width, height } = svg.viewBox.baseVal;
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.setAttribute('width', String(width));
-  clone.setAttribute('height', String(height));
-  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  style.textContent = standaloneCss(theme);
-  clone.insertBefore(style, clone.querySelector('title')?.nextSibling ?? clone.firstChild);
-  return new XMLSerializer().serializeToString(clone);
-}
-
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: name });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 // ---- UI ----------------------------------------------------------------------------------------
@@ -86,6 +65,38 @@ function CopyField({ id, label, value, hint, onCopy }: { id: string; label: stri
         </button>
       </div>
       <p className="caption">{hint}</p>
+    </div>
+  );
+}
+
+/** A PNG of the card, for X, LinkedIn and anywhere else that does not take SVG. */
+function PngField({ card, file, getSvg, theme }: { card: CardId; file: string; getSvg: () => SVGSVGElement | null; theme: Theme }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const save = async () => {
+    const svg = getSvg();
+    if (!svg || state === 'busy') return;
+    setState('busy');
+    try {
+      download(file, await cardPng(svg, theme));
+      track('download_png', { card });
+      setState('idle');
+    } catch {
+      setState('failed');
+    }
+  };
+  return (
+    <div className="embed-field">
+      <span className="eyebrow">Image</span>
+      <div className="embed-actions">
+        <button type="button" onClick={save} disabled={state === 'busy'}>
+          {state === 'busy' ? 'Rendering' : `Download ${file}`}
+        </button>
+      </div>
+      <p className="caption">
+        {state === 'failed'
+          ? 'The PNG could not be rendered. Try again, or download the SVG.'
+          : 'For X, LinkedIn and anywhere that does not take SVG.'}
+      </p>
     </div>
   );
 }
@@ -172,10 +183,10 @@ jobs:
             <div className="embed-actions">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const svg = getSvg();
                   if (!svg) return;
-                  download(file, standaloneSvg(svg, theme));
+                  download(file, await cardSvg(svg, theme));
                   track('download_svg', { card });
                 }}
               >
@@ -192,6 +203,7 @@ jobs:
           </>
         )}
 
+        <PngField card={card} file={`${card}${suffix}.png`} getSvg={getSvg} theme={theme} />
         <CopyField
           id={`${uid}-link`}
           label="Link"

@@ -10,7 +10,7 @@ inputs:
     description: GitHub username to render. Defaults to the owner of the repository running the workflow.
     default: ${{ github.repository_owner }}
   cards:
-    description: Comma-separated cards, or "all". skyline, rank, overview, streak, heatmap, languages, top-repos, orgs.
+    description: Comma-separated cards, or "all". skyline, rank, citizen, overview, heatmap, streak, languages, top-repos, orgs.
     default: skyline,rank
   theme:
     description: auto, dark or light. Comma-separate to render several. The light theme is currently switched off, so every option renders dark.

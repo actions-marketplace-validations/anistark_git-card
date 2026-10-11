@@ -182,14 +182,14 @@ export function ProfileOg({ profile, avatar }: { profile: Profile; avatar?: stri
   );
 }
 
-/** A single card, scaled up and framed. */
-export function CardOg({ profile, card }: { profile: Profile; card: CardId }) {
+/** A single card, scaled up and framed. Pass the avatar as a data URI for cards that show it, since resvg cannot fetch. */
+export function CardOg({ profile, card, avatar }: { profile: Profile; card: CardId; avatar?: string }) {
   const def = getCard(card)!;
   const box = { x: 70, y: 100, w: OG.width - 140, h: OG.height - 140 };
   return (
     <Frame right={`@${profile.login} // ${def.title.toUpperCase()}`}>
       <svg x={box.x} y={box.y} width={box.w} height={box.h}>
-        <def.Component profile={profile} />
+        <def.Component profile={profile} avatar={avatar} />
       </svg>
     </Frame>
   );

@@ -119,6 +119,7 @@ export const CARD_CSS = `
 .gc-rgb-r{fill:var(--hot);opacity:.8;}
 .gc-rgb-c{fill:var(--data);opacity:.8;}
 .gc-sign{fill:var(--surface);stroke:var(--accent);}
+.gc-duo{flood-color:var(--signal);}
 ${LEVEL_CSS}
 ${SKYLINE_CSS}
 ${WEATHER_CSS}
