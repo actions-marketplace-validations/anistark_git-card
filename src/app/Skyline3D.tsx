@@ -54,6 +54,8 @@ export function Skyline3D({ profile, weather: showWeather = true }: { profile: P
           onReady: () => setReady(true),
           tag: tag.current ?? undefined,
           signs: [...eggs.values()].slice(0, MAX_SIGNS).map(({ date, sign }) => ({ date, text: sign })),
+          weather: showWeather ? weatherFor(profile) : null,
+          seed: profile.login.toLowerCase(),
         });
       },
       { rootMargin: '200px' },
@@ -64,11 +66,11 @@ export function Skyline3D({ profile, weather: showWeather = true }: { profile: P
       io.disconnect();
       dispose?.();
     };
-  }, [profile]);
+  }, [profile, showWeather]);
 
   // No calendar: the SVG card underneath shows "calendar offline", so there is nothing to draw on top of it.
   if (!hasCalendar(profile)) return null;
-  // The scene has no weather of its own yet, so it names the forecast the SVG card draws.
+  // The scene draws the weather, and the label names it, with the reason on hover.
   const weather = showWeather ? weatherFor(profile) : null;
 
   return (
