@@ -32,6 +32,7 @@ pnpm-debug.log*
 .claude
 .pi
 .vscode
+plan
 
 # project stats from `just stats`, for /stats in dev
 public/stats.local.json
