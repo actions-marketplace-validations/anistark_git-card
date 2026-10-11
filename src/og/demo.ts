@@ -4,7 +4,8 @@ import type { WeatherState } from '../lib/weather';
 // Counts for the last days of the year, newest last, that put the demo city in each weather.
 const TAILS: Record<WeatherState, number[]> = {
   clear: [2, 9, 11, 8, 10, 12, 3],
-  fireworks: Array.from({ length: 60 }, (_, i) => 2 + (i % 5)),
+  // A 24 day streak, just past the demo year's best of 22.
+  fireworks: [0, ...Array.from({ length: 24 }, (_, i) => 2 + (i % 5))],
   storm: [0, 22, 31, 18, 40, 27, 35, 24],
   fog: Array(20).fill(0),
   rain: [0, 1, 0, 0, 0, 0, 0],

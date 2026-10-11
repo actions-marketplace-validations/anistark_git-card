@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { demoProfile } from '../og/demo';
 import { normalize, type RawUser } from './profile';
-import { FOG_DAYS, WEATHER_STATES, weatherFor } from './weather';
+import { FIREWORKS_DAYS, FOG_DAYS, WEATHER_STATES, weatherFor } from './weather';
 
 type Weeks = RawUser['contributionsCollection']['contributionCalendar']['weeks'];
 
@@ -62,17 +62,38 @@ describe('weatherFor', () => {
     expect(weatherFor(profile(weekdays))).toMatchObject({ state: 'clear', label: 'clear' });
   });
 
-  it('sets off fireworks when the current streak is the longest and at least two weeks', () => {
-    const streak = (n: number) => profile((i, d) => (i >= DAYS - n ? 1 : weekdays(i, d)));
-    expect(weatherFor(streak(14))).toMatchObject({ state: 'fireworks', reason: '14 day streak, a new personal best' });
+  /** The weekday rhythm, then a run of `n` active days ending today, with an empty day before it. */
+  const streak = (n: number, before: (i: number, weekday: number) => number = weekdays) =>
+    profile((i, d) => (i >= DAYS - n ? 1 : i === DAYS - n - 1 ? 0 : before(i, d)));
+
+  it('sets off fireworks when a streak first reaches two weeks', () => {
+    expect(weatherFor(streak(14))).toMatchObject({ state: 'fireworks', reason: '14 day streak, a new best' });
     expect(state(streak(13))).not.toBe('fireworks');
   });
 
-  it('holds the fireworks while an older streak is still longer', () => {
-    const p = profile((i, d) => (i < 30 || i >= DAYS - 20 ? 1 : weekdays(i, d)));
-    expect(p.streaks.current).toBe(20);
-    expect(p.streaks.longest).toBeGreaterThan(20);
-    expect(state(p)).not.toBe('fireworks');
+  it(`keeps the fireworks for ${FIREWORKS_DAYS} days, not for the whole streak`, () => {
+    expect(state(streak(13 + FIREWORKS_DAYS))).toBe('fireworks');
+    expect(state(streak(14 + FIREWORKS_DAYS))).not.toBe('fireworks');
+  });
+
+  it("sets them off again when the streak passes the year's old best", () => {
+    const old = (i: number, d: number) => (i >= 10 && i < 40 ? 1 : i === 9 || i === 40 ? 0 : weekdays(i, d));
+    expect(weatherFor(streak(31, old))).toMatchObject({ state: 'fireworks', reason: "31 day streak, past the year's best of 30" });
+    expect(state(streak(30, old))).not.toBe('fireworks');
+    expect(state(streak(30 + FIREWORKS_DAYS, old))).toBe('fireworks');
+    expect(state(streak(31 + FIREWORKS_DAYS, old))).not.toBe('fireworks');
+  });
+
+  it('marks every hundred days of a streak', () => {
+    expect(weatherFor(streak(100))).toMatchObject({ state: 'fireworks', reason: '100 day streak and counting' });
+    expect(state(streak(99 + FIREWORKS_DAYS))).toBe('fireworks');
+    expect(state(streak(100 + FIREWORKS_DAYS))).not.toBe('fireworks');
+    expect(state(streak(300))).toBe('fireworks');
+  });
+
+  it('counts the streak up to yesterday when today is still empty', () => {
+    const p = profile((i, d) => (i === DAYS - 1 ? 0 : i >= DAYS - 15 ? 1 : i === DAYS - 16 ? 0 : weekdays(i, d)));
+    expect(weatherFor(p)).toMatchObject({ state: 'fireworks', reason: '14 day streak, a new best' });
   });
 
   it('storms when the last seven days are the busiest of the year', () => {

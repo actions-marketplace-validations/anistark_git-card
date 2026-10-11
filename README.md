@@ -10,6 +10,12 @@ Type a GitHub username and get a 3D contribution skyline, an F to SSS rank, stre
 
 It is a static site. Profiles are built in the visitor's browser from public APIs, so there is no server and no token to run it.
 
+<p align="center">
+  <a href="https://anistark.github.io/git-card/u/anistark"><img src="https://anistark.github.io/git-card/cards/anistark/skyline.svg" alt="Contribution skyline for @anistark, with today's weather" width="760" /></a>
+</p>
+
+The skyline above is a live README card. It is re-rendered every day, and its weather follows the last week of work.
+
 ## Use it
 
 | URL                                         | What it is                                           |

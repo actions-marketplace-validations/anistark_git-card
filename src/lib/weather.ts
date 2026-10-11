@@ -25,8 +25,12 @@ export const WEATHER_LABELS: Record<WeatherState, string> = {
   clear: 'clear',
 };
 
-/** A streak this long that is also the longest ever sets off fireworks. */
+/** The shortest streak that can set off fireworks. */
 export const FIREWORKS_STREAK = 14;
+/** Fireworks last this many days after a streak beats the year's old best, or passes a milestone. */
+export const FIREWORKS_DAYS = 7;
+/** Every this many days of streak is a milestone. */
+export const FIREWORKS_MILESTONE = 100;
 /** Days without a contribution before the fog rolls in. */
 export const FOG_DAYS = 14;
 /** Below this share of a usual week, it rains. */
@@ -45,6 +49,30 @@ function median(values: number[]): number {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Longest run of active days in a list. */
+function longestRun(days: Day[]): number {
+  let best = 0;
+  let run = 0;
+  for (const d of days) best = Math.max(best, (run = d.count > 0 ? run + 1 : 0));
+  return best;
+}
+
+/**
+ * Why the current streak sets off fireworks today, or null. They are an event, not a state: a week after the
+ * streak beats the year's old best (or first reaches two weeks), and a week after each hundred days.
+ */
+function celebration(days: Day[]): string | null {
+  let current = 0;
+  while (current < days.length && days[days.length - 1 - current].count > 0) current++;
+  if (current < FIREWORKS_STREAK) return null;
+  if (current % FIREWORKS_MILESTONE < FIREWORKS_DAYS && current >= FIREWORKS_MILESTONE) return `${current} day streak and counting`;
+  const before = longestRun(days.slice(0, days.length - current - 1));
+  const record = Math.max(before, FIREWORKS_STREAK - 1);
+  if (current > record && current - record <= FIREWORKS_DAYS)
+    return before >= FIREWORKS_STREAK ? `${current} day streak, past the year's best of ${before}` : `${current} day streak, a new best`;
+  return null;
+}
+
 /**
  * Today's weather, or null without a calendar. The calendar's last day is today, and an empty today does
  * not count yet (it is not over), the same way streaks treat it. First match wins.
@@ -62,8 +90,8 @@ export function weatherFor(profile: Profile): Weather | null {
     week: week.map((d) => d.date),
   });
 
-  const { current, longest } = profile.streaks;
-  if (current >= FIREWORKS_STREAK && current >= longest) return make('fireworks', `${current} day streak, a new personal best`);
+  const party = celebration(days);
+  if (party) return make('fireworks', party);
 
   // Busiest of every 7-day window, and of those that end before this week starts. Matching an earlier week is
   // not enough, or a perfectly regular rhythm would storm every day.
