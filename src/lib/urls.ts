@@ -19,6 +19,8 @@ export interface Utm {
 export interface CardLinkOptions {
   embed?: boolean;
   theme?: Theme;
+  /** False turns the skyline's weather off. */
+  weather?: boolean;
 }
 
 const query = (params: Record<string, string | boolean | undefined>) => {
@@ -44,7 +46,9 @@ export const urls = {
     import.meta.env?.DEV ? href('stats.local.json') : `${SITE.repo.replace('github.com', 'raw.githubusercontent.com')}/stats/history.json`,
   profile: (login: string, tags?: Utm) => href(`u/${login.toLowerCase()}${query({ ...utm(tags) })}`),
   card: (login: string, card: string, opts: CardLinkOptions = {}) =>
-    href(`card/${query({ user: login, id: card, embed: opts.embed, theme: opts.theme })}`),
+    href(
+      `card/${query({ user: login, id: card, embed: opts.embed, theme: opts.theme, weather: opts.weather === false ? 'off' : undefined })}`,
+    ),
   /** Pre-rendered SVGs published with the site for the logins in SNAPSHOT_USERS. */
   snapshotIndex: () => href('cards/index.json'),
   snapshotSvg: (login: string, card: string, theme: Theme = 'auto') =>

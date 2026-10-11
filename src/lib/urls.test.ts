@@ -13,6 +13,14 @@ describe('urls.profile', () => {
   });
 });
 
+describe('urls.card', () => {
+  it('only writes weather into the link when it is off', () => {
+    expect(urls.card('octocat', 'skyline')).toBe('/card/?user=octocat&id=skyline');
+    expect(urls.card('octocat', 'skyline', { weather: true })).toBe('/card/?user=octocat&id=skyline');
+    expect(urls.card('octocat', 'skyline', { embed: true, weather: false })).toBe('/card/?user=octocat&id=skyline&embed&weather=off');
+  });
+});
+
 describe('loginFromPath', () => {
   it('reads the login from a profile path, with or without a trailing slash', () => {
     expect(loginFromPath('/u/octocat')).toBe('octocat');

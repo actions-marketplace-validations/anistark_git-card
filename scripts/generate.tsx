@@ -2,7 +2,7 @@
 // GraphQL for exact numbers. The website itself never needs a token.
 //
 //   tsx scripts/generate.tsx --users anistark,torvalds --out dist/cards          hosted snapshots for Pages
-//   tsx scripts/generate.tsx --users anistark --out git-card --flat --cards skyline,rank --themes dark
+//   tsx scripts/generate.tsx --users anistark --out git-card --flat --cards skyline,rank --themes dark --weather off
 //   tsx scripts/generate.tsx --site-og public/og.png                             the site's own preview image
 //
 // Needs GITHUB_TOKEN for --users. Writes <out>/<login>/<card>[-dark|-light].svg, or <out>/<card>... with --flat,
@@ -29,6 +29,8 @@ const { values } = parseArgs({
     themes: { type: 'string', default: LIGHT_THEME ? 'auto,dark,light' : 'auto' },
     out: { type: 'string', default: 'git-card' },
     flat: { type: 'boolean', default: false },
+    // Weather over the skyline, from the last week of work. "off" draws the plain city.
+    weather: { type: 'string', default: 'on' },
     'site-og': { type: 'string' },
   },
 });
@@ -60,6 +62,8 @@ async function cards(users: string[]) {
   if (unknown.length) throw new Error(`Unknown cards: ${unknown.join(', ')}. Pick from: ${CARD_IDS.join(', ')}.`);
   const themes = list(values.themes!) as Theme[];
   if (values.flat && users.length > 1) throw new Error('--flat writes one user per folder. Pass a single user.');
+  if (values.weather !== 'on' && values.weather !== 'off') throw new Error(`--weather is "on" or "off", not "${values.weather}".`);
+  const weather = values.weather === 'on';
 
   const index: { generatedAt: string; users: Record<string, { cards: string[] }> } = { generatedAt: new Date().toISOString(), users: {} };
   for (const login of users) {
@@ -70,7 +74,7 @@ async function cards(users: string[]) {
       const { Component } = getCard(id)!;
       for (const theme of themes) {
         const file = join(dir, `${id}${theme === 'auto' ? '' : `-${theme}`}.svg`);
-        writeFileSync(file, renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true })));
+        writeFileSync(file, renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true, weather })));
       }
     }
     index.users[profile.login.toLowerCase()] = { cards: wanted };

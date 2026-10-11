@@ -4,6 +4,7 @@ import { track } from '../lib/analytics';
 import { findEggs, MAX_SIGNS, signEggs } from '../lib/eggs';
 import { shortDate } from '../lib/format';
 import { hasCalendar, type Profile } from '../lib/profile';
+import { weatherFor } from '../lib/weather';
 
 const supportsWebGL = () => {
   try {
@@ -17,7 +18,7 @@ const supportsWebGL = () => {
  * Sits on top of the static SVG skyline and fades in once WebGL has drawn, so there is never an empty box.
  * three.js is only downloaded when the skyline scrolls near the viewport. Without WebGL the SVG stays.
  */
-export function Skyline3D({ profile }: { profile: Profile }) {
+export function Skyline3D({ profile, weather: showWeather = true }: { profile: Profile; weather?: boolean }) {
   const host = useRef<HTMLDivElement>(null);
   const readout = useRef<HTMLDivElement>(null);
   const tag = useRef<HTMLDivElement>(null);
@@ -67,6 +68,8 @@ export function Skyline3D({ profile }: { profile: Profile }) {
 
   // No calendar: the SVG card underneath shows "calendar offline", so there is nothing to draw on top of it.
   if (!hasCalendar(profile)) return null;
+  // The scene has no weather of its own yet, so it names the forecast the SVG card draws.
+  const weather = showWeather ? weatherFor(profile) : null;
 
   return (
     <div
@@ -75,7 +78,9 @@ export function Skyline3D({ profile }: { profile: Profile }) {
       role="img"
       aria-label={`3D skyline of ${profile.login}'s contributions over the last year`}
     >
-      <div className="sky3d-label eyebrow">Contribution skyline · 3D</div>
+      <div className="sky3d-label eyebrow" title={weather?.reason}>
+        Contribution skyline · 3D{weather && ` · Forecast: ${weather.label}`}
+      </div>
       <div ref={readout} className="sky3d-hover caption tabular" aria-live="polite">
         Drag to orbit
       </div>

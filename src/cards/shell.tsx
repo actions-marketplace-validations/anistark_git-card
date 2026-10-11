@@ -27,6 +27,8 @@ export interface CardProps {
   standalone?: boolean;
   /** The calendar is still on its way: calendar cards show a scanning state instead of saying it is offline. */
   calendarLoading?: boolean;
+  /** Weather over the skyline. On unless set to false. */
+  weather?: boolean;
 }
 
 export const SIZES = {
@@ -49,7 +51,7 @@ interface ShellProps extends CardProps {
   children: ReactNode;
 }
 
-/** Glow filter and scanline pattern. Ids are fixed: identical in every card, so duplicates on one page resolve to the same thing. */
+/** Glow and fog filters and the scanline pattern. Ids are fixed: identical in every card, so duplicates on one page resolve to the same thing. */
 export function SharedDefs() {
   return (
     <>
@@ -61,6 +63,9 @@ export function SharedDefs() {
           <feMergeNode in="tight" />
           <feMergeNode in="SourceGraphic" />
         </feMerge>
+      </filter>
+      <filter id="gc-f-fog" x="-10%" y="-80%" width="120%" height="260%">
+        <feGaussianBlur stdDeviation="7" />
       </filter>
       <pattern id="gc-p-scan" width="4" height="3" patternUnits="userSpaceOnUse">
         <rect className="gc-scanfill" width="4" height="1" />

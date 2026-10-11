@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { CARD_IDS } from '../cards/registry';
+import { WEATHER_STATES } from '../lib/weather';
 import { CardOg, HomeOg, ProfileOg, toSvg } from './compose';
 import { demoProfile } from './demo';
 import { flattenCss } from './flatten';
@@ -39,6 +40,7 @@ describe('OG images', () => {
     ['home', toSvg(<HomeOg demo={profile} />)],
     ['profile', toSvg(<ProfileOg profile={profile} />)],
     ...CARD_IDS.map((id): [string, string] => [`card-${id}`, toSvg(<CardOg profile={profile} card={id} />)]),
+    ...WEATHER_STATES.map((state): [string, string] => [`weather-${state}`, toSvg(<CardOg profile={demoProfile(state)} card="skyline" />)]),
   ];
 
   it.each(cases)(

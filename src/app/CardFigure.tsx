@@ -13,6 +13,7 @@ export function CardFigure({
   live = true,
   bare = false,
   calendarLoading = false,
+  weather = true,
 }: {
   profile: Profile;
   card: CardId;
@@ -24,6 +25,8 @@ export function CardFigure({
   bare?: boolean;
   /** The calendar is still on its way. */
   calendarLoading?: boolean;
+  /** Weather over the skyline. */
+  weather?: boolean;
 }) {
   const art = useRef<HTMLDivElement>(null);
   const def = CARDS[card];
@@ -33,8 +36,8 @@ export function CardFigure({
   return (
     <figure className={`card card--${def.size}${solo ? ' card--solo' : ''}`} id={card}>
       <div ref={art} className={interactive ? 'sky-stack' : 'card-art'}>
-        <def.Component profile={profile} calendarLoading={calendarLoading} />
-        {interactive && <Skyline3D profile={profile} />}
+        <def.Component profile={profile} calendarLoading={calendarLoading} weather={weather} />
+        {interactive && <Skyline3D profile={profile} weather={weather} />}
       </div>
       {bare ? null : solo ? (
         <>
