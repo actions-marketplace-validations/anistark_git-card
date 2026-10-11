@@ -3,6 +3,7 @@ import type { Profile } from '../lib/profile';
 import { isValidLogin } from '../lib/profile';
 import type { CalendarAttempt } from '../lib/calendar';
 import { CACHE_PREFIX, fetchPublicProfile, PublicApiError, type CalendarState, type Step } from '../lib/public-api';
+import { loginFromPath } from '../lib/urls';
 
 export type StepState = 'start' | 'done' | 'failed';
 
@@ -24,6 +25,14 @@ export type ProfileState =
 /** Read a query parameter once. Pages are static, so the URL is the only input. */
 export function useParam(name: string): string | null {
   const [value] = useState(() => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get(name)));
+  return value;
+}
+
+/** The profile's login, from the path (u/<login>) or the older query form (u/?user=<login>). */
+export function useLogin(): string | null {
+  const [value] = useState(() =>
+    typeof location === 'undefined' ? null : (loginFromPath(location.pathname) ?? new URLSearchParams(location.search).get('user')),
+  );
   return value;
 }
 

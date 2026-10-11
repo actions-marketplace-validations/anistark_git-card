@@ -1,6 +1,6 @@
 // Every internal link goes through here, because a GitHub Pages project site lives under /<repo>/.
-// Profiles and cards use query strings (u/?user=x) rather than paths (u/x), since a static host has no
-// rewrites: u/index.html exists, u/x/index.html does not.
+// Profiles live at u/<login>. A static host has no rewrites, so most of those paths have no file: GitHub Pages
+// serves 404.html for them, and it renders the profile. Cards use query strings (card/?user=x&id=y).
 
 import type { Theme } from '../cards/style';
 import { SITE } from '../site';
@@ -28,6 +28,12 @@ const query = (params: Record<string, string | boolean | undefined>) => {
   return parts.length ? `?${parts.join('&')}` : '';
 };
 
+/** The login in a profile path (u/<login>), or null for any other page. */
+export function loginFromPath(pathname: string): string | null {
+  const path = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname.replace(/^\//, '');
+  return /^u\/([A-Za-z0-9-]{1,39})\/?$/.exec(path)?.[1] ?? null;
+}
+
 const utm = (tags?: Utm) => tags && { utm_source: tags.source, utm_medium: tags.medium, utm_campaign: tags.campaign };
 
 export const urls = {
@@ -36,7 +42,7 @@ export const urls = {
   /** The Stats workflow's history file on the `stats` branch. In dev, the copy `just stats` writes. */
   statsHistory: () =>
     import.meta.env?.DEV ? href('stats.local.json') : `${SITE.repo.replace('github.com', 'raw.githubusercontent.com')}/stats/history.json`,
-  profile: (login: string, tags?: Utm) => href(`u/${query({ user: login, ...utm(tags) })}`),
+  profile: (login: string, tags?: Utm) => href(`u/${login.toLowerCase()}${query({ ...utm(tags) })}`),
   card: (login: string, card: string, opts: CardLinkOptions = {}) =>
     href(`card/${query({ user: login, id: card, embed: opts.embed, theme: opts.theme })}`),
   /** Pre-rendered SVGs published with the site for the logins in SNAPSHOT_USERS. */

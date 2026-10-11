@@ -1,0 +1,25 @@
+---
+import ProfileApp from '../../app/ProfileApp';
+import Base from '../../layouts/Base.astro';
+import { isValidLogin } from '../../lib/profile';
+import { SITE } from '../../site';
+
+// Featured logins get a real page, so their links answer 200 and unfurl with a preview. Any other login is
+// served by 404.html, which renders the same profile.
+export function getStaticPaths() {
+  const logins = [...SITE.examples, ...(process.env.SNAPSHOT_USERS ?? '').split(/[\s,]+/)].map((l) => l.trim().toLowerCase());
+  return [...new Set(logins.filter(isValidLogin))].map((login) => ({ params: { login } }));
+}
+
+const { login } = Astro.params;
+---
+
+<Base
+  title={`@${login} · git-card`}
+  description={`@${login} on GitHub, as a city: 3D contribution skyline, rank, streaks, languages and organizations.`}
+>
+  <ProfileApp client:only="react" />
+  <noscript>
+    <p class="lead">git-card builds profiles in your browser, so it needs JavaScript.</p>
+  </noscript>
+</Base>

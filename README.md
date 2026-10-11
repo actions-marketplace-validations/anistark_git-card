@@ -14,7 +14,7 @@ It is a static site. Profiles are built in the visitor's browser from public API
 
 | URL                                       | What it is                                           |
 | ----------------------------------------- | ---------------------------------------------------- |
-| `u/?user=<login>`                         | The full profile                                     |
+| `u/<login>`                               | The full profile                                     |
 | `card/?user=<login>&id=<card>`            | One card on its own page, with embed options         |
 | `card/?user=<login>&id=<card>&embed`      | Just the card, for an `<iframe>`                     |
 | `cards/<login>/<card>[-dark\|-light].svg` | Hosted card image, for the logins the site publishes |

@@ -44,6 +44,8 @@ jobs:
           # Works for a project site (user.github.io/repo), a user site, or a custom domain.
           SITE_URL: ${{ steps.pages.outputs.origin }}
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # These logins get a prerendered profile page, so their links answer 200 and unfurl with a preview.
+          SNAPSHOT_USERS: ${{ vars.SNAPSHOT_USERS || github.repository_owner }}
 
       # Pre-rendered cards with a stable URL, for READMEs. Set the SNAPSHOT_USERS repository variable to a
       # comma-separated list of logins to publish more than the repository owner.

@@ -1,10 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import { href, urls } from '../lib/urls';
+import { SITE } from '../site';
 
 export const prerender = true;
-
-const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
 ---
 
 <Base
@@ -37,7 +36,7 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
       <span>Try</span>
       {/* Commas come from CSS, so formatter line breaks can never put a space before them. */}
       <span class="examples">
-        {examples.map((login) => (
+        {SITE.examples.map((login) => (
           <a href={urls.profile(login)}>@{login}</a>
         ))}
       </span>
@@ -50,7 +49,7 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
     <dl class="url-list tabular">
       <div>
         <dt>
-          u/?user=<em>login</em>
+          u/<em>login</em>
         </dt>
         <dd>The full profile, built in your browser from public GitHub data.</dd>
       </div>
