@@ -23,6 +23,8 @@ Everything is dark themed for now. The light theme is switched off with `LIGHT_T
 
 Cards: `skyline`, `rank`, `overview`, `streak`, `heatmap`, `languages`, `top-repos`, `orgs`.
 
+Some days in the calendar hide easter eggs. Each one hangs a small neon sign on its tower in the skyline, and the profile page lists the ones found.
+
 ### Put a card in a README
 
 READMEs only show images, and GitHub fetches them through its own image proxy, so a card in a README has to be a real `.svg` file. Every card's Embed panel offers whichever of these fits:

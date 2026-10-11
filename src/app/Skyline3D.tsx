@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { skylineCells } from '../cards/levels';
+import { track } from '../lib/analytics';
+import { findEggs, MAX_SIGNS, signEggs } from '../lib/eggs';
 import { shortDate } from '../lib/format';
 import { hasCalendar, type Profile } from '../lib/profile';
 
@@ -32,13 +34,25 @@ export function Skyline3D({ profile }: { profile: Profile }) {
         io.disconnect();
         const { mountSkyline } = await import('../scenes/skyline');
         if (cancelled) return;
+        // One egg per day, the rarest, when two land on the same date.
+        const eggs = new Map<string, ReturnType<typeof signEggs>[number]>();
+        for (const egg of signEggs(findEggs(profile))) if (!eggs.has(egg.date)) eggs.set(egg.date, egg);
+        const seen = new Set<string>();
         dispose = mountSkyline(el, skylineCells(profile), profile.weeks.length, {
           onHover: (cell) => {
+            const egg = cell && eggs.get(cell[5]);
+            if (egg && !seen.has(egg.key)) {
+              seen.add(egg.key);
+              track('egg_hover', { egg: egg.key });
+            }
             if (readout.current)
-              readout.current.textContent = cell ? `${cell[2]} on ${shortDate(cell[5])} ${cell[5].slice(0, 4)}` : 'Drag to orbit';
+              readout.current.textContent = cell
+                ? `${egg ? `${egg.label}: ` : ''}${cell[2]} on ${shortDate(cell[5])} ${cell[5].slice(0, 4)}`
+                : 'Drag to orbit';
           },
           onReady: () => setReady(true),
           tag: tag.current ?? undefined,
+          signs: [...eggs.values()].slice(0, MAX_SIGNS).map(({ date, sign }) => ({ date, text: sign })),
         });
       },
       { rootMargin: '200px' },

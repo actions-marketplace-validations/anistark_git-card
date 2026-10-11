@@ -42,6 +42,8 @@ interface Options {
   onReady: () => void;
   /** Floats over the hovered tower with its count, kept on top of it as the view moves. Positioned in host pixels. */
   tag?: HTMLElement;
+  /** Easter egg neon signs, each floating over its day's tower like the tag. */
+  signs?: { date: string; text: string }[];
 }
 
 const GAP = 0.82;
@@ -77,7 +79,7 @@ function readPalette(): Palette {
   };
 }
 
-export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { onHover, onReady, tag }: Options): () => void {
+export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { onHover, onReady, tag, signs = [] }: Options): () => void {
   // No calendar, no city. Three.js also cannot build per-tile colors for an empty set.
   if (!cells.length) return () => {};
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -240,17 +242,42 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
   renderer.domElement.style.touchAction = 'pan-y'; // let vertical swipes scroll the page on phones
   controls.update();
 
+  const signEls = signs.flatMap(({ date, text }, i) => {
+    const index = cells.findIndex((c) => c[5] === date && c[2] > 0);
+    if (index < 0) return [];
+    const el = Object.assign(document.createElement('div'), { className: 'sky3d-sign', textContent: text });
+    el.setAttribute('aria-hidden', 'true');
+    el.style.animationDelay = `${i * 1.7}s`;
+    host.appendChild(el);
+    return [{ index, el }];
+  });
+
   function render() {
     if (night) composer.render();
     else renderer.render(scene, camera);
-    placeTag();
+    placeOverlays();
   }
 
-  // The hovered tower's top, projected to the screen every frame, since the city rises, sways and orbits.
+  function placeOverlays() {
+    placeTag();
+    for (const { index, el } of signEls) {
+      el.hidden = index === hovered; // the count tag takes its place
+      if (!el.hidden) el.style.transform = roofAt(index);
+    }
+  }
+
+  // A tower's top, projected to the screen every frame, since the city rises, sways and orbits.
   const instance = new Matrix4();
   const top = new Vector3();
   const turn = new Quaternion();
   const size = new Vector3();
+  function roofAt(index: number) {
+    mesh.getMatrixAt(index, instance);
+    instance.decompose(top, turn, size);
+    top.y += size.y / 2;
+    top.applyMatrix4(mesh.matrixWorld).project(camera);
+    return `translate(${((top.x + 1) / 2) * host.clientWidth}px, ${((1 - top.y) / 2) * host.clientHeight}px) translate(-50%, -100%)`;
+  }
   function placeTag() {
     if (!tag) return;
     const cell = cells[hovered];
@@ -258,12 +285,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
       tag.hidden = true;
       return;
     }
-    mesh.getMatrixAt(hovered, instance);
-    instance.decompose(top, turn, size);
-    top.y += size.y / 2;
-    top.applyMatrix4(mesh.matrixWorld).project(camera);
     tag.textContent = cell[2].toLocaleString();
-    tag.style.transform = `translate(${((top.x + 1) / 2) * host.clientWidth}px, ${((1 - top.y) / 2) * host.clientHeight}px) translate(-50%, -100%)`;
+    tag.style.transform = roofAt(hovered);
     tag.hidden = false;
   }
 
@@ -290,12 +313,12 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     if (hit === hovered) return;
     hovered = hit;
     onHover(hit >= 0 ? cells[hit] : null);
-    placeTag();
+    placeOverlays();
   };
   const onPointerLeave = () => {
     hovered = -1;
     onHover(null);
-    placeTag();
+    placeOverlays();
   };
   renderer.domElement.addEventListener('pointermove', onPointerMove);
   renderer.domElement.addEventListener('pointerleave', onPointerLeave);
@@ -373,6 +396,7 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     beam.geometry.dispose();
     beamMaterial.dispose();
     mesh.dispose();
+    for (const { el } of signEls) el.remove();
     renderer.dispose();
     renderer.domElement.remove();
   };

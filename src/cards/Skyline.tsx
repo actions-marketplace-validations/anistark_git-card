@@ -1,3 +1,4 @@
+import { findEggs, MAX_SIGNS, signEggs, type Egg } from '../lib/eggs';
 import { hasCalendar, type Profile } from '../lib/profile';
 import { heightOf, leveller, skylineFill } from './levels';
 import { CalendarOffline, PAD, SIZES, Shell, shortDate, type CardProps } from './shell';
@@ -7,6 +8,8 @@ const W = { x: 10, y: 2.4 };
 const D = { x: -6.5, y: 5.2 };
 const FILL = 0.82;
 const MAX_H = 95;
+// Rooftop neon sign for an easter egg, in city units.
+const SIGN = { h: 11, rise: 12, char: 4.6, pad: 7, gap: 3 };
 
 type Pt = [number, number];
 const r = (n: number) => Math.round(n * 10) / 10;
@@ -40,7 +43,14 @@ export function SkylineCity({ profile, box, animate = true }: CityProps) {
     }),
   );
 
-  const all = columns.flat().flatMap((col) => [...col.top, ...col.right, ...col.front]) as Pt[];
+  const signs = placeSigns(findEggs(profile), columns.flat());
+  const all = [
+    ...columns.flat().flatMap((col) => [...col.top, ...col.right, ...col.front]),
+    ...signs.flatMap((s): Pt[] => [
+      [s.x, s.y],
+      [s.x + s.w, s.y],
+    ]),
+  ] as Pt[];
   if (!all.length) return null; // no calendar: nothing to draw, and no bounds to fit
   const xs = all.map((p) => p[0]);
   const ys = all.map((p) => p[1]);
@@ -95,8 +105,59 @@ export function SkylineCity({ profile, box, animate = true }: CityProps) {
             ))}
         </g>
       ))}
+      {signs.length > 0 && (
+        <g className={animate ? 'gc-a-fade' : undefined} style={animate ? { animationDelay: '1.2s' } : undefined}>
+          {signs.map(({ egg, x, y, w, roof }, i) => (
+            <g key={egg.key}>
+              <title>{`${egg.label}: ${shortDate(egg.date)} ${egg.date.slice(0, 4)}`}</title>
+              <line className="gc-accent-s" x1={r(x + w / 2)} y1={r(roof)} x2={r(x + w / 2)} y2={r(y + SIGN.h)} strokeWidth={0.8} />
+              <g className={animate ? 'gc-glow gc-a-flicker' : 'gc-glow'} style={animate ? { animationDelay: `${i * 1.7}s` } : undefined}>
+                <rect className="gc-sign" x={r(x)} y={r(y)} width={r(w)} height={SIGN.h} strokeWidth={0.8} />
+                <text
+                  className="gc-accent gc-d"
+                  x={r(x + w / 2)}
+                  y={r(y + 8)}
+                  fontSize={7}
+                  fontWeight={700}
+                  letterSpacing="0.06em"
+                  textAnchor="middle"
+                >
+                  {egg.sign}
+                </text>
+              </g>
+            </g>
+          ))}
+        </g>
+      )}
     </g>
   );
+}
+
+interface Sign {
+  egg: Egg & { sign: string; date: string };
+  /** Top-left of the sign, and the roof it stands on, in city units. */
+  x: number;
+  y: number;
+  w: number;
+  roof: number;
+}
+
+/** Signs for the rarest eggs, each on its day's roof, skipping any that would overlap one already placed. */
+function placeSigns(eggs: Egg[], cells: { day: { date: string }; h: number; top: Pt[] }[]): Sign[] {
+  const byDate = new Map(cells.map((c) => [c.day.date, c]));
+  const placed: Sign[] = [];
+  for (const egg of signEggs(eggs)) {
+    const cell = byDate.get(egg.date);
+    if (!cell || cell.h === 0) continue;
+    const cx = cell.top.reduce((n, p) => n + p[0], 0) / 4;
+    const roof = cell.top.reduce((n, p) => n + p[1], 0) / 4;
+    const w = egg.sign.length * SIGN.char + SIGN.pad;
+    const sign = { egg, x: cx - w / 2, y: roof - SIGN.rise - SIGN.h, w, roof };
+    const clash = placed.some((o) => Math.abs(o.x + o.w / 2 - cx) < (o.w + w) / 2 + SIGN.gap && Math.abs(o.y - sign.y) < SIGN.h + SIGN.gap);
+    if (!clash) placed.push(sign);
+    if (placed.length === MAX_SIGNS) break;
+  }
+  return placed;
 }
 
 /** The isometric SVG skyline. Doubles as the README image and the no-JS fallback for the 3D one. */

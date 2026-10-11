@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { cardsIn } from '../cards/registry';
 import { rankProfile } from '../lib/rank';
 import { CardFigure } from './CardFigure';
+import { EggSection } from './EggSection';
 import { OrgSection } from './OrgSection';
 import { ProfileHeader } from './ProfileHeader';
 import { CalendarStatus, ErrorView, Lookup, Scanning, Warnings } from './Status';
@@ -33,6 +34,7 @@ export default function ProfileApp() {
           <CardFigure key={id} profile={profile} card={id} calendarLoading={calendarLoading} />
         ))}
       </div>
+      <EggSection profile={profile} />
       <OrgSection profile={profile} />
       <p className="caption fetched">
         Public GitHub data, fetched by your browser at {new Date(profile.fetchedAt).toLocaleString()} and cached for an hour.

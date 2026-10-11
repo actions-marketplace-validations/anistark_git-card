@@ -82,6 +82,7 @@ export const CARD_CSS = `
 .gc-bleed{stop-color:var(--glow-c);stop-opacity:var(--glow-o);}
 .gc-rgb-r{fill:var(--hot);opacity:.8;}
 .gc-rgb-c{fill:var(--data);opacity:.8;}
+.gc-sign{fill:var(--surface);stroke:var(--accent);}
 ${LEVEL_CSS}
 ${SKYLINE_CSS}
 @keyframes gc-fade{from{opacity:0}}
@@ -90,6 +91,7 @@ ${SKYLINE_CSS}
 @keyframes gc-up{from{transform:scaleY(0)}}
 @keyframes gc-blink{0%,100%{opacity:.15}30%{opacity:1}}
 @keyframes gc-wave{0%,58%,100%{transform:none;filter:none}68%{transform:translateY(-3px);filter:brightness(1.5)}78%{transform:none;filter:none}}
+@keyframes gc-flicker{0%,100%{opacity:1}91%{opacity:.35}92%{opacity:1}94%{opacity:.5}95%{opacity:1}}
 @keyframes gc-boot{0%{opacity:0;transform:translateX(-6px)}12%{opacity:1;transform:translateX(5px)}18%{opacity:.4;transform:translateX(-3px)}26%{opacity:1;transform:none}60%{opacity:1}64%{opacity:.6}68%{opacity:1}}
 @keyframes gc-jit-r{0%,88%,100%{transform:none}90%{transform:translate(-4px,1px)}93%{transform:translate(3px,-1px)}96%{transform:translate(-2px,0)}}
 @keyframes gc-jit-c{0%,88%,100%{transform:none}90%{transform:translate(4px,-1px)}93%{transform:translate(-3px,1px)}96%{transform:translate(2px,0)}}
@@ -99,6 +101,7 @@ ${SKYLINE_CSS}
 .gc-a-grow{transform-box:fill-box;transform-origin:left;animation:gc-grow .9s cubic-bezier(.22,1,.36,1) both;}
 .gc-a-up{transform-box:fill-box;transform-origin:bottom;animation:gc-up .8s cubic-bezier(.22,1,.36,1) both;}
 .gc-wave{animation:gc-wave 7s ease-in-out infinite;}
+.gc-a-flicker{animation:gc-flicker 6s steps(1,end) infinite;}
 .gc-a-blink{opacity:.15;animation:gc-blink 1s ease-in-out infinite;}
 .gc-rgb-r{animation:gc-jit-r 4.2s steps(1,end) infinite;}
 .gc-rgb-c{animation:gc-jit-c 4.2s steps(1,end) infinite;}
