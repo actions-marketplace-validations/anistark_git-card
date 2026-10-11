@@ -4,7 +4,9 @@ import { track } from '../lib/analytics';
 import { findEggs, MAX_SIGNS, signEggs } from '../lib/eggs';
 import { shortDate } from '../lib/format';
 import { hasCalendar, type Profile } from '../lib/profile';
+import { skylineStl, stlFileName } from '../lib/stl';
 import { weatherFor } from '../lib/weather';
+import { download } from './export';
 
 const supportsWebGL = () => {
   try {
@@ -83,6 +85,17 @@ export function Skyline3D({ profile, weather: showWeather = true }: { profile: P
       <div className="sky3d-label eyebrow" title={weather?.reason}>
         Contribution skyline · 3D{weather && ` · Forecast: ${weather.label}`}
       </div>
+      <button
+        type="button"
+        className="btn-ghost sky3d-stl"
+        title="Download a 3D printable model of this skyline"
+        onClick={() => {
+          download(stlFileName(profile), new Blob([skylineStl(profile)], { type: 'model/stl' }));
+          track('download_stl', { from: '3d' });
+        }}
+      >
+        STL
+      </button>
       <div ref={readout} className="sky3d-hover caption tabular" aria-live="polite">
         Drag to orbit
       </div>

@@ -4,6 +4,8 @@ import { SIZES } from '../cards/shell';
 import { LIGHT_THEME, THEME_CHOICES, type Theme } from '../cards/style';
 import { SITE } from '../site';
 import { track } from '../lib/analytics';
+import { hasCalendar, type Profile } from '../lib/profile';
+import { skylineStl, STL_DEFAULTS, stlFileName } from '../lib/stl';
 import { absolute, urls } from '../lib/urls';
 import { cardPng, cardSvg, download } from './export';
 
@@ -101,15 +103,42 @@ function PngField({ card, file, getSvg, theme }: { card: CardId; file: string; g
   );
 }
 
+/** The skyline as a 3D printable model. Built from the profile alone, so it works without WebGL. */
+function StlField({ profile }: { profile: Profile }) {
+  const name = stlFileName(profile);
+  const { pitch, margin } = STL_DEFAULTS;
+  const cm = Math.round((profile.weeks.length * pitch + margin * 2) / 10);
+  return (
+    <div className="embed-field">
+      <span className="eyebrow">3D print</span>
+      <div className="embed-actions">
+        <button
+          type="button"
+          onClick={() => {
+            download(name, new Blob([skylineStl(profile)], { type: 'model/stl' }));
+            track('download_stl', { from: 'embed' });
+          }}
+        >
+          Download {name}
+        </button>
+      </div>
+      <p className="caption">{`A printable model of the year in millimetres, about ${cm} cm wide with towers up to ${STL_DEFAULTS.height} mm.`}</p>
+    </div>
+  );
+}
+
 export function EmbedPanel({
   login,
   card,
   getSvg,
+  profile,
   open = false,
 }: {
   login: string;
   card: CardId;
   getSvg: () => SVGSVGElement | null;
+  /** The skyline offers a 3D print of it. */
+  profile?: Profile;
   open?: boolean;
 }) {
   const uid = useId();
@@ -204,6 +233,7 @@ jobs:
         )}
 
         <PngField card={card} file={`${card}${suffix}.png`} getSvg={getSvg} theme={theme} />
+        {card === 'skyline' && profile && hasCalendar(profile) && <StlField profile={profile} />}
         <CopyField
           id={`${uid}-link`}
           label="Link"

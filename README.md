@@ -73,7 +73,7 @@ READMEs only show images, and GitHub fetches them through its own image proxy, s
 
    Then in your README: `![Contribution skyline](./git-card/skyline.svg)`.
 
-3. **Download.** Every card downloads as a standalone `.svg` from its Embed panel, or as a `.png` for X, LinkedIn and anywhere that does not take SVG. Neither updates by itself.
+3. **Download.** Every card downloads as a standalone `.svg` from its Embed panel, or as a `.png` for X, LinkedIn and anywhere that does not take SVG. The skyline also downloads as an `.stl` you can 3D print. None of them update by themselves.
 
 The 3D view needs JavaScript, so READMEs get the isometric SVG skyline. For the live 3D city, embed the card page in an iframe on a blog or portfolio.
 

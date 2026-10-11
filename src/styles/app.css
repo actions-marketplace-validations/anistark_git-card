@@ -1024,6 +1024,13 @@ section + section {
   pointer-events: none;
   background: repeating-linear-gradient(to bottom, transparent 0 2px, var(--scan) 2px 3px);
 }
+.sky3d-stl {
+  position: absolute;
+  z-index: 1;
+  top: 3.6%;
+  right: 6%;
+  padding: var(--sp-1) var(--sp-2);
+}
 .sky3d-label,
 .sky3d-hover {
   position: absolute;

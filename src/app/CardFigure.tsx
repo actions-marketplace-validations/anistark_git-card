@@ -42,14 +42,14 @@ export function CardFigure({
       {bare ? null : solo ? (
         <>
           <p className="caption">{def.description}</p>
-          <EmbedPanel login={profile.login} card={card} getSvg={getSvg} open />
+          <EmbedPanel login={profile.login} card={card} getSvg={getSvg} profile={profile} open />
         </>
       ) : (
         <figcaption className="card-meta">
           <a className="card-title" href={urls.card(profile.login, card)}>
             {def.title}
           </a>
-          <EmbedPanel login={profile.login} card={card} getSvg={getSvg} />
+          <EmbedPanel login={profile.login} card={card} getSvg={getSvg} profile={profile} />
         </figcaption>
       )}
     </figure>
