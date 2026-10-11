@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardFromPath, loginFromPath, urls } from './urls';
+import { cardFromPath, loginFromPath, urls, versusFromPath } from './urls';
 
 describe('urls.profile', () => {
   it('links to the profile path', () => {
@@ -22,6 +22,24 @@ describe('urls.card', () => {
   it('only writes weather into the link when it is off', () => {
     expect(urls.card('octocat', 'skyline', { weather: true })).toBe('/u/octocat/c/skyline');
     expect(urls.card('octocat', 'skyline', { embed: true, weather: false })).toBe('/u/octocat/c/skyline?embed&weather=off');
+  });
+});
+
+describe('urls.versus', () => {
+  it('puts both logins in the path, lowercased', () => {
+    expect(urls.versus('AniStark', 'Torvalds')).toBe('/vs/anistark/torvalds');
+    expect(urls.versus('anistark')).toBe('/vs/anistark');
+  });
+});
+
+describe('versusFromPath', () => {
+  it('reads one or both logins', () => {
+    expect(versusFromPath('/vs/anistark/torvalds')).toEqual({ a: 'anistark', b: 'torvalds' });
+    expect(versusFromPath('/vs/anistark/')).toEqual({ a: 'anistark', b: null });
+  });
+
+  it('ignores every other page', () => {
+    for (const path of ['/vs', '/vs/', '/u/anistark', '/vs/a/b/c', '/vs/not_valid/x']) expect(versusFromPath(path)).toBeNull();
   });
 });
 

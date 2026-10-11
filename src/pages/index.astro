@@ -62,18 +62,66 @@ export const prerender = true;
         </dd>
       </div>
       <div>
+        <dt>
+          vs/<em>login</em>/<em>rival</em>
+        </dt>
+        <dd>Two profiles head to head, with a tale of the tape and a verdict.</dd>
+      </div>
+      <div>
         <dt>README</dt>
         <dd>Every card downloads as an SVG. Add the GitHub Action and it re-renders into your repo every day.</dd>
       </div>
     </dl>
   </section>
+
+  <section class="versus-home" id="versus">
+    <p class="eyebrow">Versus // head to head</p>
+    <h2 class="title rgb">Settle it.</h2>
+    <form class="lookup versus-form" role="search" data-versus>
+      <label for="vs-home-a" class="eyebrow">
+        Two GitHub usernames
+      </label>
+      <div class="versus-row">
+        <div class="lookup-row hud">
+          <span class="lookup-at" aria-hidden="true">
+            &gt; @
+          </span>
+          <input id="vs-home-a" name="a" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
+        </div>
+        <span class="versus-vs" aria-hidden="true">
+          vs
+        </span>
+        <div class="lookup-row hud">
+          <span class="lookup-at" aria-hidden="true">
+            &gt; @
+          </span>
+          <input
+            name="b"
+            required
+            aria-label="Rival's GitHub username"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="gaearon"
+          />
+        </div>
+        <button type="submit">Fight</button>
+      </div>
+    </form>
+  </section>
   <script>
-    import { submitLookup } from '../app/lookup';
+    import { submitLookup, submitVersus } from '../app/lookup';
 
     for (const form of document.querySelectorAll<HTMLFormElement>('form[data-lookup]')) {
       form.addEventListener('submit', (event) => {
         event.preventDefault();
         submitLookup(form);
+      });
+    }
+    for (const form of document.querySelectorAll<HTMLFormElement>('form[data-versus]')) {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitVersus(form);
       });
     }
   </script>

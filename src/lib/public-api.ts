@@ -153,13 +153,18 @@ async function get<T>(url: string, opts: FetchOptions, timeoutMs = opts.timeoutM
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
+const SEARCH_LIMITED = 'search rate limit, try again in a minute';
+
+/** True when some of a profile is missing because search hit its 10 a minute limit, so a retry will fill it in. */
+export const hitSearchLimit = (warnings: string[]) => warnings.some((w) => w.includes(SEARCH_LIMITED));
+
 /** Runs an optional part, recording a warning instead of failing the page. Rate limits on core data still throw. */
 async function optional<T>(label: string, warnings: string[], run: () => Promise<T>): Promise<T | null> {
   try {
     return await run();
   } catch (err) {
     if ((err as Error).name === 'AbortError') throw err;
-    const reason = err instanceof PublicApiError && err.kind === 'rate-limit' ? 'search rate limit, try again in a minute' : 'unavailable';
+    const reason = err instanceof PublicApiError && err.kind === 'rate-limit' ? SEARCH_LIMITED : 'unavailable';
     warnings.push(`${label}: ${reason}.`);
     return null;
   }

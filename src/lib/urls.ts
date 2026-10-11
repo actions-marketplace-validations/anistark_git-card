@@ -1,6 +1,6 @@
 // Every internal link goes through here, because a GitHub Pages project site lives under /<repo>/.
-// Profiles live at u/<login> and their cards at u/<login>/c/<card>. A static host has no rewrites, so most of those
-// paths have no file: GitHub Pages serves 404.html for them, and it renders the profile or the card.
+// Profiles live at u/<login>, their cards at u/<login>/c/<card> and head to heads at vs/<a>/<b>. A static host has no
+// rewrites, so most of those paths have no file: GitHub Pages serves 404.html for them, and it renders the page.
 
 import type { Theme } from '../cards/style';
 import { SITE } from '../site';
@@ -38,6 +38,12 @@ export function loginFromPath(pathname: string): string | null {
   return /^u\/([A-Za-z0-9-]{1,39})\/?$/.exec(sitePath(pathname))?.[1] ?? null;
 }
 
+/** The two logins in a versus path (vs/<a>/<b>), or just the first (vs/<a>). Null for any other page. */
+export function versusFromPath(pathname: string): { a: string; b: string | null } | null {
+  const match = /^vs\/([A-Za-z0-9-]{1,39})(?:\/([A-Za-z0-9-]{1,39}))?\/?$/.exec(sitePath(pathname));
+  return match ? { a: match[1], b: match[2] ?? null } : null;
+}
+
 /** The login and card in a card path (u/<login>/c/<card>), or null for any other page. */
 export function cardFromPath(pathname: string): { login: string; card: string } | null {
   const match = /^u\/([A-Za-z0-9-]{1,39})\/c\/([a-z0-9-]+)\/?$/.exec(sitePath(pathname));
@@ -57,6 +63,8 @@ export const urls = {
     href(
       `u/${login.toLowerCase()}/c/${card}${query({ embed: opts.embed, theme: opts.theme, weather: opts.weather === false ? 'off' : undefined })}`,
     ),
+  /** Two profiles head to head. Without b, the page asks for a rival. */
+  versus: (a: string, b?: string) => href(`vs/${a.toLowerCase()}${b ? `/${b.toLowerCase()}` : ''}`),
   /** Pre-rendered SVGs published with the site for the logins in SNAPSHOT_USERS. */
   snapshotIndex: () => href('cards/index.json'),
   snapshotSvg: (login: string, card: string, theme: Theme = 'auto') =>

@@ -28,6 +28,7 @@ The cards above are live README cards. They are re-rendered every day: the skyli
 | `u/<login>/c/<card>`                      | One card on its own page, with embed options         |
 | `u/<login>/c/<card>?embed`                | Just the card, for an `<iframe>`                     |
 | `u/<login>/c/skyline?weather=off`         | The skyline without its weather                      |
+| `vs/<login>/<rival>`                      | Two profiles head to head, with a verdict            |
 | `cards/<login>/<card>[-dark\|-light].svg` | Hosted card image, for the logins the site publishes |
 
 Everything is dark themed for now. The light theme is switched off with `LIGHT_THEME` in `src/cards/style.ts`.

@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { cardsIn } from '../cards/registry';
 import { rankProfile } from '../lib/rank';
 import { CardFigure } from './CardFigure';
+import { Challenge } from './Challenge';
 import { EggSection } from './EggSection';
 import { OrgSection } from './OrgSection';
 import { ProfileHeader } from './ProfileHeader';
@@ -27,6 +28,7 @@ export default function ProfileApp() {
   return (
     <>
       <ProfileHeader profile={profile} rank={rank!} calendarLoading={calendarLoading} />
+      <Challenge login={profile.login} />
       <Warnings warnings={warnings} />
       {calendarLoading && <CalendarStatus attempt={calendarAttempt} />}
       <div className="cards">

@@ -27,10 +27,12 @@ interface CityProps {
   /** Weather to draw over the city, and the area it may fill. Defaults to the box. */
   weather?: Weather | null;
   sky?: Box;
+  /** Easter egg signs on the roofs. Off where the city is mirrored, since their text would read backwards. */
+  signs?: boolean;
 }
 
 /** The isometric city itself: one block per day on a grid floor. Shared by the skyline card and the OG image. */
-export function SkylineCity({ profile, box, animate = true, weather, sky = box }: CityProps) {
+export function SkylineCity({ profile, box, animate = true, weather, sky = box, signs: showSigns = true }: CityProps) {
   const level = leveller(profile);
   const max = profile.peakDay?.count ?? 0;
   const weeks = profile.weeks.length;
@@ -49,7 +51,7 @@ export function SkylineCity({ profile, box, animate = true, weather, sky = box }
     }),
   );
 
-  const signs = placeSigns(findEggs(profile), columns.flat());
+  const signs = showSigns ? placeSigns(findEggs(profile), columns.flat()) : [];
   const all = [
     ...columns.flat().flatMap((col) => [...col.top, ...col.right, ...col.front]),
     ...signs.flatMap((s): Pt[] => [

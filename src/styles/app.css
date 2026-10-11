@@ -346,6 +346,84 @@ section + section {
   margin: 6px;
 }
 
+/* Versus: two handle fields with a "vs" between them, stacking on narrow screens. */
+.versus-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.versus-row > button {
+  align-self: stretch;
+}
+.versus-vs {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hot);
+}
+@media (max-width: 640px) {
+  .versus-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .versus-vs {
+    text-align: center;
+  }
+}
+.versus-home {
+  margin-top: var(--sp-5);
+}
+.challenge {
+  margin: 0 0 var(--sp-4);
+}
+.versus-share {
+  margin-top: var(--sp-3);
+}
+.versus + .caption,
+.versus + .tape {
+  margin-top: var(--sp-4);
+}
+.tape {
+  margin: var(--sp-4) 0 var(--sp-5);
+  padding: var(--sp-4) var(--sp-5);
+}
+.tape table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--sp-2);
+}
+.tape th,
+.tape td {
+  padding: var(--sp-2) var(--sp-2);
+  border-bottom: 1px dashed var(--line);
+  text-align: center;
+}
+.tape thead th {
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+}
+.tape td:first-child,
+.tape thead th:first-child {
+  text-align: left;
+}
+.tape td:last-child,
+.tape thead th:last-child {
+  text-align: right;
+}
+.tape .tape-label {
+  color: var(--muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-caption);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tape .tape-win {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Example handles under the lookup. Commas come from CSS so markup whitespace never misplaces them. */
 .try {
   display: flex;
@@ -1148,7 +1226,8 @@ section + section {
 
 /* ---- Error ----------------------------------------------- */
 :root[data-route='profile'] .not-found,
-:root[data-route='card'] .not-found {
+:root[data-route='card'] .not-found,
+:root[data-route='versus'] .not-found {
   display: none;
 }
 

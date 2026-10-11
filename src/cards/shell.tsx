@@ -50,6 +50,8 @@ interface ShellProps extends CardProps {
   size: CardSize;
   eyebrow: string;
   label: string;
+  /** Bottom left text. Defaults to the profile's @login. */
+  footer?: string;
   children: ReactNode;
 }
 
@@ -81,7 +83,7 @@ export function chamfer(w: number, h: number, inset = 0.5, cut = CUT) {
   return `M${l},${t} H${r - cut} L${r},${t + cut} V${b} H${l + cut} L${l},${b - cut} Z`;
 }
 
-export function Shell({ id, tag, size, eyebrow, label, profile, theme = 'auto', standalone, children }: ShellProps) {
+export function Shell({ id, tag, size, eyebrow, label, footer, profile, theme = 'auto', standalone, children }: ShellProps) {
   const { width, height } = SIZES[size];
   const titleId = `gc-title-${id}-${profile.login}`;
   const bleedId = `gc-bleed-${id}-${profile.login}`;
@@ -127,7 +129,7 @@ export function Shell({ id, tag, size, eyebrow, label, profile, theme = 'auto', 
         </text>
         {children}
         <text className="gc-muted" x={PAD + CUT - 8} y={height - 22} fontSize={14}>
-          @{profile.login}
+          {footer ?? `@${profile.login}`}
         </text>
         <Logo x={width - PAD - LOGO_H * LOGO_RATIO} y={height - 22 - 15} height={LOGO_H} />
       </g>
