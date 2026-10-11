@@ -3,7 +3,7 @@ import type { Profile } from '../lib/profile';
 import { isValidLogin } from '../lib/profile';
 import type { CalendarAttempt } from '../lib/calendar';
 import { CACHE_PREFIX, fetchPublicProfile, PublicApiError, type CalendarState, type Step } from '../lib/public-api';
-import { loginFromPath } from '../lib/urls';
+import { cardFromPath, loginFromPath } from '../lib/urls';
 
 export type StepState = 'start' | 'done' | 'failed';
 
@@ -28,11 +28,15 @@ export function useParam(name: string): string | null {
   return value;
 }
 
-/** The profile's login, from the path (u/<login>) or the older query form (u/?user=<login>). */
+/** The profile's login, from the path (u/<login>). */
 export function useLogin(): string | null {
-  const [value] = useState(() =>
-    typeof location === 'undefined' ? null : (loginFromPath(location.pathname) ?? new URLSearchParams(location.search).get('user')),
-  );
+  const [value] = useState(() => (typeof location === 'undefined' ? null : loginFromPath(location.pathname)));
+  return value;
+}
+
+/** The card page's login and card, from the path (u/<login>/c/<card>). */
+export function useCardRoute(): { login: string | null; card: string } {
+  const [value] = useState(() => (typeof location === 'undefined' ? null : cardFromPath(location.pathname)) ?? { login: null, card: '' });
   return value;
 }
 

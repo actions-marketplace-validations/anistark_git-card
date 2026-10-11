@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loginFromPath, urls } from './urls';
+import { cardFromPath, loginFromPath, urls } from './urls';
 
 describe('urls.profile', () => {
   it('links to the profile path', () => {
@@ -14,10 +14,14 @@ describe('urls.profile', () => {
 });
 
 describe('urls.card', () => {
+  it('links to the card under the profile path', () => {
+    expect(urls.card('OctoCat', 'skyline')).toBe('/u/octocat/c/skyline');
+    expect(urls.card('octocat', 'top-repos', { embed: true })).toBe('/u/octocat/c/top-repos?embed');
+  });
+
   it('only writes weather into the link when it is off', () => {
-    expect(urls.card('octocat', 'skyline')).toBe('/card/?user=octocat&id=skyline');
-    expect(urls.card('octocat', 'skyline', { weather: true })).toBe('/card/?user=octocat&id=skyline');
-    expect(urls.card('octocat', 'skyline', { embed: true, weather: false })).toBe('/card/?user=octocat&id=skyline&embed&weather=off');
+    expect(urls.card('octocat', 'skyline', { weather: true })).toBe('/u/octocat/c/skyline');
+    expect(urls.card('octocat', 'skyline', { embed: true, weather: false })).toBe('/u/octocat/c/skyline?embed&weather=off');
   });
 });
 
@@ -28,6 +32,19 @@ describe('loginFromPath', () => {
   });
 
   it('ignores every other page', () => {
-    for (const path of ['/', '/u/', '/u', '/rank/', '/u/octocat/skyline', '/card/', '/u/not_valid']) expect(loginFromPath(path)).toBeNull();
+    for (const path of ['/', '/u/', '/u', '/rank/', '/u/octocat/skyline', '/u/octocat/c/skyline', '/card/', '/u/not_valid'])
+      expect(loginFromPath(path)).toBeNull();
+  });
+});
+
+describe('cardFromPath', () => {
+  it('reads the login and card from a card path, with or without a trailing slash', () => {
+    expect(cardFromPath('/u/octocat/c/skyline')).toEqual({ login: 'octocat', card: 'skyline' });
+    expect(cardFromPath('/u/octo-cat/c/top-repos/')).toEqual({ login: 'octo-cat', card: 'top-repos' });
+  });
+
+  it('ignores every other page', () => {
+    for (const path of ['/u/octocat', '/u/octocat/c', '/u/octocat/c/', '/u/octocat/skyline', '/card/', '/u/not_valid/c/skyline'])
+      expect(cardFromPath(path)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { href, urls } from '../lib/urls';
+import { urls } from '../lib/urls';
 import { SITE } from '../site';
 
 export const prerender = true;
@@ -20,7 +20,7 @@ export const prerender = true;
       A 3D skyline of your year, your streaks, languages and best repos. Every card has its own link, so you can drop it into a README, a
       blog or a portfolio.
     </p>
-    <form class="lookup" action={href('u/')} method="get" role="search">
+    <form class="lookup" role="search" data-lookup>
       <label for="u" class="eyebrow">
         Target handle
       </label>
@@ -28,7 +28,7 @@ export const prerender = true;
         <span class="lookup-at" aria-hidden="true">
           &gt; @
         </span>
-        <input id="u" name="user" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
+        <input id="u" name="login" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
         <button type="submit">Jack in</button>
       </div>
     </form>
@@ -55,10 +55,10 @@ export const prerender = true;
       </div>
       <div>
         <dt>
-          card/?user=<em>login</em>&amp;id=skyline
+          u/<em>login</em>/c/skyline
         </dt>
         <dd>
-          One card on its own page. Add <code>&amp;embed</code> for an iframe.
+          One card on its own page. Add <code>?embed</code> for an iframe.
         </dd>
       </div>
       <div>
@@ -67,4 +67,14 @@ export const prerender = true;
       </div>
     </dl>
   </section>
+  <script>
+    import { submitLookup } from '../app/lookup';
+
+    for (const form of document.querySelectorAll<HTMLFormElement>('form[data-lookup]')) {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitLookup(form);
+      });
+    }
+  </script>
 </Base>

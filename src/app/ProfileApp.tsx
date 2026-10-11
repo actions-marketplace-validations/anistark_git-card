@@ -1,8 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { cardsIn } from '../cards/registry';
-import { isValidLogin } from '../lib/profile';
 import { rankProfile } from '../lib/rank';
-import { urls } from '../lib/urls';
 import { CardFigure } from './CardFigure';
 import { EggSection } from './EggSection';
 import { OrgSection } from './OrgSection';
@@ -15,15 +13,6 @@ export default function ProfileApp() {
   const login = useLogin();
   const [state, reload] = useProfile(login);
   const rank = useMemo(() => (state.status === 'ready' ? rankProfile(state.profile) : null), [state]);
-
-  // The lookup form and older links arrive as u/?user=<login>. Show the path form instead.
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (!login || !isValidLogin(login) || !params.has('user')) return;
-    params.delete('user');
-    const rest = params.toString();
-    history.replaceState(history.state, '', `${urls.profile(login)}${rest ? `?${rest}` : ''}${location.hash}`);
-  }, [login]);
 
   useEffect(() => {
     if (state.status === 'ready') document.title = `${state.profile.name || state.profile.login} (@${state.profile.login}) · git-card`;

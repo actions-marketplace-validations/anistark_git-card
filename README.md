@@ -18,13 +18,13 @@ The skyline above is a live README card. It is re-rendered every day, and its we
 
 ## Use it
 
-| URL                                         | What it is                                           |
-| ------------------------------------------- | ---------------------------------------------------- |
-| `u/<login>`                                 | The full profile                                     |
-| `card/?user=<login>&id=<card>`              | One card on its own page, with embed options         |
-| `card/?user=<login>&id=<card>&embed`        | Just the card, for an `<iframe>`                     |
-| `card/?user=<login>&id=skyline&weather=off` | The skyline without its weather                      |
-| `cards/<login>/<card>[-dark\|-light].svg`   | Hosted card image, for the logins the site publishes |
+| URL                                       | What it is                                           |
+| ----------------------------------------- | ---------------------------------------------------- |
+| `u/<login>`                               | The full profile                                     |
+| `u/<login>/c/<card>`                      | One card on its own page, with embed options         |
+| `u/<login>/c/<card>?embed`                | Just the card, for an `<iframe>`                     |
+| `u/<login>/c/skyline?weather=off`         | The skyline without its weather                      |
+| `cards/<login>/<card>[-dark\|-light].svg` | Hosted card image, for the logins the site publishes |
 
 Everything is dark themed for now. The light theme is switched off with `LIGHT_THEME` in `src/cards/style.ts`.
 
@@ -32,7 +32,7 @@ Cards: `skyline`, `rank`, `overview`, `streak`, `heatmap`, `languages`, `top-rep
 
 Some days in the calendar hide easter eggs. Each one hangs a small neon sign on its tower in the skyline, and the profile page lists the ones found.
 
-The skyline has weather, read from your last week of work against your own usual week. It changes on its own as the Action re-renders every day. Turn it off with `weather: off` in the Action, or `&weather=off` on a card page.
+The skyline has weather, read from your last week of work against your own usual week. It changes on its own as the Action re-renders every day. Turn it off with `weather: off` in the Action, or `?weather=off` on a card page.
 
 ### Put a card in a README
 

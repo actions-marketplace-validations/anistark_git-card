@@ -1132,7 +1132,8 @@ section + section {
 }
 
 /* ---- Error ----------------------------------------------- */
-:root[data-route='profile'] .not-found {
+:root[data-route='profile'] .not-found,
+:root[data-route='card'] .not-found {
   display: none;
 }
 

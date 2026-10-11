@@ -4,12 +4,11 @@ import { PublicApiError } from '../lib/public-api';
 import { urls } from '../lib/urls';
 import { CardFigure } from './CardFigure';
 import { ErrorView, Lookup, Scanning } from './Status';
-import { useParam, useProfile } from './useProfile';
+import { useCardRoute, useParam, useProfile } from './useProfile';
 
-/** /card/?user=login&id=card, plus &embed for iframes, &theme=dark|light and &weather=off. One card on its own. */
+/** /u/<login>/c/<card>, plus ?embed for iframes, ?theme=dark|light and ?weather=off. One card on its own. */
 export default function CardApp() {
-  const login = useParam('user');
-  const id = useParam('id') ?? '';
+  const { login, card: id } = useCardRoute();
   const embed = useParam('embed') !== null;
   const weather = useParam('weather') !== 'off';
   const card = getCard(id);

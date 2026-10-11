@@ -1,14 +1,12 @@
 ---
 import ProfileApp from '../../app/ProfileApp';
 import Base from '../../layouts/Base.astro';
-import { isValidLogin } from '../../lib/profile';
-import { SITE } from '../../site';
+import { featuredLogins } from '../../lib/featured';
 
 // Featured logins get a real page, so their links answer 200 and unfurl with a preview. Any other login is
 // served by 404.html, which renders the same profile.
 export function getStaticPaths() {
-  const logins = [...SITE.examples, ...(process.env.SNAPSHOT_USERS ?? '').split(/[\s,]+/)].map((l) => l.trim().toLowerCase());
-  return [...new Set(logins.filter(isValidLogin))].map((login) => ({ params: { login } }));
+  return featuredLogins().map((login) => ({ params: { login } }));
 }
 
 const { login } = Astro.params;

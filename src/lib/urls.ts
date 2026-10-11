@@ -1,6 +1,6 @@
 // Every internal link goes through here, because a GitHub Pages project site lives under /<repo>/.
-// Profiles live at u/<login>. A static host has no rewrites, so most of those paths have no file: GitHub Pages
-// serves 404.html for them, and it renders the profile. Cards use query strings (card/?user=x&id=y).
+// Profiles live at u/<login> and their cards at u/<login>/c/<card>. A static host has no rewrites, so most of those
+// paths have no file: GitHub Pages serves 404.html for them, and it renders the profile or the card.
 
 import type { Theme } from '../cards/style';
 import { SITE } from '../site';
@@ -30,10 +30,18 @@ const query = (params: Record<string, string | boolean | undefined>) => {
   return parts.length ? `?${parts.join('&')}` : '';
 };
 
+/** A pathname relative to the site's base, without the leading slash. */
+const sitePath = (pathname: string) => (pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname.replace(/^\//, ''));
+
 /** The login in a profile path (u/<login>), or null for any other page. */
 export function loginFromPath(pathname: string): string | null {
-  const path = pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname.replace(/^\//, '');
-  return /^u\/([A-Za-z0-9-]{1,39})\/?$/.exec(path)?.[1] ?? null;
+  return /^u\/([A-Za-z0-9-]{1,39})\/?$/.exec(sitePath(pathname))?.[1] ?? null;
+}
+
+/** The login and card in a card path (u/<login>/c/<card>), or null for any other page. */
+export function cardFromPath(pathname: string): { login: string; card: string } | null {
+  const match = /^u\/([A-Za-z0-9-]{1,39})\/c\/([a-z0-9-]+)\/?$/.exec(sitePath(pathname));
+  return match ? { login: match[1], card: match[2] } : null;
 }
 
 const utm = (tags?: Utm) => tags && { utm_source: tags.source, utm_medium: tags.medium, utm_campaign: tags.campaign };
@@ -47,7 +55,7 @@ export const urls = {
   profile: (login: string, tags?: Utm) => href(`u/${login.toLowerCase()}${query({ ...utm(tags) })}`),
   card: (login: string, card: string, opts: CardLinkOptions = {}) =>
     href(
-      `card/${query({ user: login, id: card, embed: opts.embed, theme: opts.theme, weather: opts.weather === false ? 'off' : undefined })}`,
+      `u/${login.toLowerCase()}/c/${card}${query({ embed: opts.embed, theme: opts.theme, weather: opts.weather === false ? 'off' : undefined })}`,
     ),
   /** Pre-rendered SVGs published with the site for the logins in SNAPSHOT_USERS. */
   snapshotIndex: () => href('cards/index.json'),

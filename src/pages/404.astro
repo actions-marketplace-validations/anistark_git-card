@@ -1,5 +1,5 @@
 ---
-import ProfileRoute from '../app/ProfileRoute';
+import UserRoute from '../app/UserRoute';
 import ErrorState from '../components/ErrorState.astro';
 import Base from '../layouts/Base.astro';
 
@@ -8,24 +8,19 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 
 <Base title="Not found · git-card" description="This page does not exist." noindex>
   <script is:inline define:vars={{ base }}>
-    // Before first paint: GitHub Pages serves this page for every u/<login>, so swap the error for the profile.
+    // Before first paint: GitHub Pages serves this page for every u/<login> and u/<login>/c/<card>, so swap the
+    // error for the profile or the card.
     const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname.replace(/^\//, '');
     if (/^u\/[A-Za-z0-9-]{1,39}\/?$/.test(path)) {
       document.documentElement.dataset.route = 'profile';
       document.title = 'Profile · git-card';
+    } else if (/^u\/[A-Za-z0-9-]{1,39}\/c\/[a-z0-9-]+\/?$/.test(path)) {
+      document.documentElement.dataset.route = 'card';
+      document.title = 'Card · git-card';
     }
   </script>
   <div class="not-found">
     <ErrorState status={404} message="There is nothing at this address." />
   </div>
-  <ProfileRoute client:only="react" />
-  <script>
-    import { urls } from '../lib/urls';
-
-    // Old server-rendered card links looked like /u/<login>/<card>. Send them to the card page.
-    const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
-    const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname.replace(/^\//, '');
-    const match = path.match(/^u\/([A-Za-z0-9-]{1,39})\/([a-z-]+)\/?$/);
-    if (match) location.replace(urls.card(match[1], match[2]));
-  </script>
+  <UserRoute client:only="react" />
 </Base>
