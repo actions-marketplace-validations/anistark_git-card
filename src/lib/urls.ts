@@ -1,5 +1,6 @@
 // Every internal link goes through here, because a GitHub Pages project site lives under /<repo>/.
-// Profiles live at u/<login>, their cards at u/<login>/c/<card> and head to heads at vs/<a>/<b>. A static host has no
+// Profiles live at u/<login>, their cards at u/<login>/c/<card>, head to heads at vs/<a>/<b> and districts of the
+// shared city at city/<login>. A static host has no
 // rewrites, so most of those paths have no file: GitHub Pages serves 404.html for them, and it renders the page.
 
 import type { Theme } from '../cards/style';
@@ -44,6 +45,12 @@ export function versusFromPath(pathname: string): { a: string; b: string | null 
   return match ? { a: match[1], b: match[2] ?? null } : null;
 }
 
+/** The city, optionally focused on one district (city/<login>). Null for any other page. */
+export function cityFromPath(pathname: string): { login: string | null } | null {
+  const match = /^city(?:\/([A-Za-z0-9-]{1,39}))?\/?$/.exec(sitePath(pathname));
+  return match ? { login: match[1] ?? null } : null;
+}
+
 /** The login and card in a card path (u/<login>/c/<card>), or null for any other page. */
 export function cardFromPath(pathname: string): { login: string; card: string } | null {
   const match = /^u\/([A-Za-z0-9-]{1,39})\/c\/([a-z0-9-]+)\/?$/.exec(sitePath(pathname));
@@ -65,6 +72,11 @@ export const urls = {
     ),
   /** Two profiles head to head. Without b, the page asks for a rival. */
   versus: (a: string, b?: string) => href(`vs/${a.toLowerCase()}${b ? `/${b.toLowerCase()}` : ''}`),
+  /** The shared city, or one district in it. */
+  city: (login?: string) => href(`city/${login ? login.toLowerCase() : ''}`),
+  /** The City census on the `stats` branch. In dev, the copy `just city` writes. */
+  cityData: () =>
+    import.meta.env?.DEV ? href('city.local.json') : `${SITE.repo.replace('github.com', 'raw.githubusercontent.com')}/stats/city.json`,
   /** Pre-rendered SVGs published with the site for the logins in SNAPSHOT_USERS. */
   snapshotIndex: () => href('cards/index.json'),
   snapshotSvg: (login: string, card: string, theme: Theme = 'auto') =>

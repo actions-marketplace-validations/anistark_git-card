@@ -1224,10 +1224,198 @@ section + section {
   }
 }
 
+/* ---- Night City ------------------------------------------ */
+.city-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.city-tiles {
+  margin: 0;
+}
+.city-search {
+  margin: 0;
+}
+/* The map holds the space and is the whole city without WebGL. The 3D view covers it once drawn. */
+.city-stage {
+  position: relative;
+  height: min(78vh, 760px);
+  min-height: 360px;
+  background: color-mix(in srgb, var(--sea) 14%, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.city-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.city-map-district {
+  cursor: pointer;
+}
+.city-map-island {
+  fill: var(--raised);
+  stroke: color-mix(in srgb, var(--data) 45%, transparent);
+  stroke-width: 0.3;
+}
+.city-map-district.is-landmark .city-map-island {
+  stroke: var(--accent);
+}
+.city-map-district.is-active .city-map-island,
+.city-map-district:hover .city-map-island {
+  stroke: var(--data);
+  stroke-width: 0.6;
+}
+.city-map-week {
+  fill: var(--data);
+}
+.city-map-peak {
+  fill: var(--peak);
+}
+.city-map-label {
+  fill: var(--text);
+  font-family: var(--font-display);
+}
+.city3d {
+  position: absolute;
+  inset: 0;
+  background: var(--surface);
+  cursor: grab;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 600ms ease-out;
+}
+.city3d.is-ready {
+  opacity: 1;
+  pointer-events: auto;
+}
+.city3d:active {
+  cursor: grabbing;
+}
+.city3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+.city3d::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, var(--scan) 2px 3px);
+}
+.city3d-hover {
+  position: absolute;
+  z-index: 2;
+  right: var(--sp-3);
+  bottom: var(--sp-2);
+  left: var(--sp-3);
+  margin: 0;
+  pointer-events: none;
+  text-align: right;
+  color: var(--accent);
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.city3d-plates {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+/* A login over its district, anchored at its bottom center by a JS transform. */
+.city-plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 1px 6px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--data) 50%, transparent);
+  will-change: transform;
+}
+.city-plate.is-landmark {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.city-plate.is-active {
+  z-index: 1;
+  color: var(--surface);
+  background: var(--data);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--data) 55%, transparent);
+}
+.city-plate[hidden] {
+  display: none;
+}
+.city-district {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+}
+.city-district img {
+  filter: grayscale(1) contrast(1.1);
+  box-shadow: 0 0 0 1px var(--data);
+}
+.city-district > div:nth-child(2) {
+  flex: 1 1 260px;
+}
+.city-district p {
+  margin: 0;
+}
+.city-district-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--data);
+}
+.city-district-links {
+  display: flex;
+  gap: var(--sp-2);
+}
+.city-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+.link-button {
+  min-height: 0;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: none;
+  color: var(--data);
+  background: none;
+  border: 0;
+  box-shadow: none;
+  clip-path: none;
+  cursor: pointer;
+  text-align: left;
+}
+.link-button:hover {
+  color: var(--accent);
+  filter: none;
+}
+@media (max-width: 760px) {
+  .city-stage {
+    height: 70vh;
+  }
+}
+
 /* ---- Error ----------------------------------------------- */
 :root[data-route='profile'] .not-found,
 :root[data-route='card'] .not-found,
-:root[data-route='versus'] .not-found {
+:root[data-route='versus'] .not-found,
+:root[data-route='city'] .not-found {
   display: none;
 }
 

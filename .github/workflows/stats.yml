@@ -2,6 +2,7 @@ name: Stats
 
 # Daily snapshot of stars, forks, repos using the Action and repo traffic, kept in history.json on the
 # `stats` branch, which /stats reads. Traffic needs the STATS_TOKEN secret (see scripts/stats.ts).
+# The same run takes the city census into city.json next to it, which city/ reads (see scripts/city.ts).
 on:
   schedule:
     - cron: '41 3 * * *'
@@ -45,10 +46,18 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           STATS_TOKEN: ${{ secrets.STATS_TOKEN }}
 
+      - name: City census
+        run: pnpm exec tsx scripts/city.ts --out stats-data/city.json
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          # Landmarks: the same featured logins the Pages build prerenders.
+          SNAPSHOT_USERS: ${{ vars.SNAPSHOT_USERS || github.repository_owner }}
+
       - name: Save history
+        if: ${{ !cancelled() }}
         working-directory: stats-data
         run: |
-          git add history.json
+          git add -A
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -qm "Stats for $(date -u +%F)"
           git push -q origin stats

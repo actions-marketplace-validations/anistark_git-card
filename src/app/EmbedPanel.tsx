@@ -37,7 +37,19 @@ function useHosted(login: string, card: CardId): boolean {
 
 // ---- UI ----------------------------------------------------------------------------------------
 
-function CopyField({ id, label, value, hint, onCopy }: { id: string; label: string; value: string; hint: string; onCopy: () => void }) {
+export function CopyField({
+  id,
+  label,
+  value,
+  hint,
+  onCopy,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  hint: string;
+  onCopy: () => void;
+}) {
   const [copied, setCopied] = useState<'idle' | 'copied' | 'manual'>('idle');
   const copy = async () => {
     onCopy();
@@ -127,6 +139,32 @@ function StlField({ profile }: { profile: Profile }) {
   );
 }
 
+/** The workflow file that keeps cards fresh. Without a login, the Action renders the repo owner. */
+export function actionWorkflow({ login, cards, theme }: { login?: string; cards: string; theme?: Theme }) {
+  const inputs = [login && `username: ${login}`, `cards: ${cards}`, theme && `theme: ${theme}`].filter(Boolean);
+  return `# .github/workflows/git-card.yml in your profile repo
+name: git-card
+on:
+  schedule: [{ cron: '17 3 * * *' }]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ${SITE.action}
+        with:
+${inputs.map((i) => `          ${i}`).join('\n')}
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add git-card
+          git diff --staged --quiet || git commit -m "Update git-card"
+          git push`;
+}
+
 export function EmbedPanel({
   login,
   card,
@@ -153,28 +191,7 @@ export function EmbedPanel({
   const readmeLink = absolute(urls.profile(login, { source: 'readme', medium: 'card', campaign: card }));
   const copied = (snippet: string) => () => track('copy_snippet', { snippet, card, hosted });
 
-  const action = `# .github/workflows/git-card.yml in your profile repo
-name: git-card
-on:
-  schedule: [{ cron: '17 3 * * *' }]
-  workflow_dispatch:
-permissions:
-  contents: write
-jobs:
-  cards:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ${SITE.action}
-        with:
-          username: ${login}
-          cards: ${card}${LIGHT_THEME ? `\n          theme: ${theme}` : ''}
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add git-card
-          git diff --staged --quiet || git commit -m "Update git-card"
-          git push`;
+  const action = actionWorkflow({ login, cards: card, theme: LIGHT_THEME ? theme : undefined });
 
   return (
     <details className="embed" open={open}>

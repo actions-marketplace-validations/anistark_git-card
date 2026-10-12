@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { supportsWebGL } from './webgl';
 import { skylineCells } from '../cards/levels';
 import { track } from '../lib/analytics';
 import { findEggs, MAX_SIGNS, signEggs } from '../lib/eggs';
@@ -7,14 +8,6 @@ import { hasCalendar, type Profile } from '../lib/profile';
 import { skylineStl, stlFileName } from '../lib/stl';
 import { weatherFor } from '../lib/weather';
 import { download } from './export';
-
-const supportsWebGL = () => {
-  try {
-    return !!document.createElement('canvas').getContext('webgl2');
-  } catch {
-    return false;
-  }
-};
 
 /**
  * Sits on top of the static SVG skyline and fades in once WebGL has drawn, so there is never an empty box.

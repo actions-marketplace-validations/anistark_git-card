@@ -12,6 +12,7 @@ import { parseArgs } from 'node:util';
 import { fmt } from '../src/lib/format';
 import { mergeSnapshot, type Count, type Snapshot, type StatsHistory, type TrafficDay } from '../src/lib/stats';
 import { SITE } from '../src/site';
+import { restClient } from './rest';
 
 const { values } = parseArgs({ options: { history: { type: 'string' } } });
 
@@ -24,19 +25,7 @@ const action = SITE.action.split('@')[0];
 /** Stars and forks past this many are only counted, not dated. */
 const MAX_PAGES = 30;
 
-/** Waits out rate limits (code search on a workflow token hits them often) up to three times. */
-async function get<T>(path: string, { auth = token, accept = 'application/vnd.github+json' } = {}): Promise<T> {
-  for (let attempt = 1; ; attempt++) {
-    const res = await fetch(`https://api.github.com/${path}`, { headers: { Authorization: `Bearer ${auth}`, Accept: accept } });
-    if (res.ok) return res.json() as Promise<T>;
-    const body = await res.text();
-    const limited = res.status === 429 || (res.status === 403 && /rate limit/i.test(body));
-    if (!limited || attempt === 3) throw Object.assign(new Error(`${path}: ${res.status} ${body}`), { status: res.status });
-    const seconds = Number(res.headers.get('retry-after')) || Number(/try again in ([\d.]+)s/.exec(body)?.[1]) || 60;
-    console.warn(`Rate limited on ${path.split('?')[0]}, waiting ${Math.ceil(seconds)}s`);
-    await new Promise((r) => setTimeout(r, Math.min(seconds, 120) * 1000 + 1000));
-  }
-}
+const get = restClient(token);
 
 /** Dates from a paginated list, or null when there are more than MAX_PAGES pages. */
 async function dates<T>(path: string, total: number, pick: (item: T) => string, accept?: string): Promise<string[] | null> {

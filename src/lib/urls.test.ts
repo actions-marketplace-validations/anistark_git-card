@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardFromPath, loginFromPath, urls, versusFromPath } from './urls';
+import { cardFromPath, cityFromPath, loginFromPath, urls, versusFromPath } from './urls';
 
 describe('urls.profile', () => {
   it('links to the profile path', () => {
@@ -64,5 +64,19 @@ describe('cardFromPath', () => {
   it('ignores every other page', () => {
     for (const path of ['/u/octocat', '/u/octocat/c', '/u/octocat/c/', '/u/octocat/skyline', '/card/', '/u/not_valid/c/skyline'])
       expect(cardFromPath(path)).toBeNull();
+  });
+});
+
+describe('city paths', () => {
+  it('links to the city or one district in it', () => {
+    expect(urls.city()).toBe('/city/');
+    expect(urls.city('AniStark')).toBe('/city/anistark');
+  });
+
+  it('reads the district from the path', () => {
+    expect(cityFromPath('/city/')).toEqual({ login: null });
+    expect(cityFromPath('/city')).toEqual({ login: null });
+    expect(cityFromPath('/city/anistark')).toEqual({ login: 'anistark' });
+    for (const path of ['/city/a/b', '/u/anistark', '/city/not_valid', '/cityx']) expect(cityFromPath(path)).toBeNull();
   });
 });

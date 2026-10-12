@@ -17,6 +17,8 @@ export const SITE = {
   analytics: { id: 'G-WTCT8ZW8H8', host: 'anistark.github.io' },
   /** Profiles suggested on the home page. Each also gets a prerendered page. */
   examples: ['torvalds', 'karpathy', 'gaearon', 'sindresorhus', 'anistark'],
+  /** The shared city. Logins here never move in, for anyone who asks to be taken out. Lowercase. */
+  city: { blocklist: [] as string[] },
 } as const;
 
 export type IconName = 'x' | 'mastodon' | 'astro' | 'threejs' | 'githubpages' | 'svg';

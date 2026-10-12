@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { supportsWebGL } from './webgl';
 import { shortDate } from '../lib/format';
 import type { Hit, Lane } from '../scenes/stats';
 
 export interface StatLane extends Lane {
   unit: string;
 }
-
-const supportsWebGL = () => {
-  try {
-    return !!document.createElement('canvas').getContext('webgl2');
-  } catch {
-    return false;
-  }
-};
 
 const describe = (lanes: StatLane[], dates: string[], { lane, day }: Hit) => {
   const value = lanes[lane].values[day];

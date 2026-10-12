@@ -18,6 +18,9 @@ inputs:
   weather:
     description: Weather over the skyline, from your last week of work. on or off.
     default: 'on'
+  city:
+    description: Your district in Night City, the shared city of everyone running this Action. off keeps you out. Read by the daily census, not by this step.
+    default: 'on'
   output:
     description: Folder in your repository to write the SVGs to.
     default: git-card

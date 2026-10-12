@@ -29,12 +29,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import type { WeatherState } from '../lib/weather';
-import { addWeather, type WeatherPalette } from './weather';
+import { bloomComposer, readPalette, SEA_WAVE } from './common';
+import { addWeather } from './weather';
 
 /** [week, weekday, count, level 0-5, height 0-1, date] */
 export type Cell = [number, number, number, number, number, string];
@@ -56,37 +53,6 @@ const GAP = 0.82;
 const MAX_H = 7;
 const RISE_MS = 1600;
 const SWEEP_MS = 5200; // one scanner pass, including the rest before the next
-
-interface Palette extends WeatherPalette {
-  levels: Color[];
-  sea: Color;
-  peak: Color;
-  surface: Color;
-}
-
-// Same recipe as the CSS level ramp in cards/style.ts, resolved from the live page tokens.
-function readPalette(): Palette {
-  const css = getComputedStyle(document.documentElement);
-  const token = (name: string) => new Color(css.getPropertyValue(name).trim() || '#000');
-  const raised = token('--raised');
-  const data = token('--data');
-  const surface = token('--surface');
-  const mix = (t: number) => new Color().lerpColors(raised, data, t);
-  const night = surface.r * 0.2126 + surface.g * 0.7152 + surface.b * 0.0722 < 0.4;
-  return {
-    levels: [raised, mix(0.3), mix(0.55), mix(0.78), data, token('--hot')],
-    sea: token('--sea'),
-    peak: token('--peak'),
-    surface,
-    signal: token('--accent'),
-    data,
-    hot: token('--hot'),
-    text: token('--text'),
-    rain: token('--rain'),
-    fog: token('--fog'),
-    night,
-  };
-}
 
 export function mountSkyline(
   host: HTMLElement,
@@ -139,7 +105,7 @@ export function mountSkyline(
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute float aSea;\nuniform float uTime;\nuniform float uWave;\nuniform float uGlint;\nvarying float vCityX;\nvarying float vCrest;\nvarying float vGlint;',
+        `#include <common>\nattribute float aSea;\nuniform float uTime;\nuniform float uWave;\nuniform float uGlint;\nvarying float vCityX;\nvarying float vCrest;\nvarying float vGlint;\n${SEA_WAVE}`,
       )
       .replace(
         '#include <project_vertex>',
@@ -147,13 +113,10 @@ export function mountSkyline(
         #ifdef USE_INSTANCING
           cityPos = instanceMatrix * cityPos;
         #endif
-        // Sea: a swell rolls across every 7 seconds over a faint constant ripple.
-        float front = mix( -40.0, 40.0, mod( uTime, 7.0 ) / 7.0 );
-        float d = cityPos.x + cityPos.z * 0.5 - front;
-        float swell = exp( -d * d / 10.0 );
-        float ripple = sin( cityPos.x * 0.9 + cityPos.z * 1.4 + uTime * 1.5 );
-        cityPos.y += aSea * uWave * ( swell * 0.35 + ripple * 0.03 );
-        vCrest = aSea * uWave * swell;
+        // Sea tiles ride the swell.
+        vec2 wave = seaWave( cityPos.xz, uTime );
+        cityPos.y += aSea * uWave * wave.x;
+        vCrest = aSea * uWave * wave.y;
         // Rain: each sea tile catches a glint now and then, on its own beat.
         float seed = fract( sin( dot( cityPos.xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
         vGlint = aSea * uGlint * pow( max( 0.0, sin( seed * 40.0 + uTime * ( 1.2 + seed ) ) ), 30.0 );
@@ -227,10 +190,7 @@ export function mountSkyline(
       })
     : null;
 
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new Vector2(1, 1), 0.55, 0.3, 0.62));
-  composer.addPass(new OutputPass());
+  const composer = bloomComposer(renderer, scene, camera);
 
   let night = true;
   const paint = () => {
