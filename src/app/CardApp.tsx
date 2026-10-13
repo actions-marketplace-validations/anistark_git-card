@@ -4,13 +4,13 @@ import { PublicApiError } from '../lib/public-api';
 import { urls } from '../lib/urls';
 import { CardFigure } from './CardFigure';
 import { ErrorView, Lookup, Scanning } from './Status';
-import { useParam, useProfile } from './useProfile';
+import { useCardRoute, useParam, useProfile } from './useProfile';
 
-/** /card/?user=login&id=card, plus &embed for iframes and &theme=dark|light. One card on its own. */
+/** /u/<login>/c/<card>, plus ?embed for iframes, ?theme=dark|light and ?weather=off. One card on its own. */
 export default function CardApp() {
-  const login = useParam('user');
-  const id = useParam('id') ?? '';
+  const { login, card: id } = useCardRoute();
   const embed = useParam('embed') !== null;
+  const weather = useParam('weather') !== 'off';
   const card = getCard(id);
   const [state] = useProfile(card ? login : null);
 
@@ -39,10 +39,10 @@ export default function CardApp() {
   if (embed) {
     // Interactive cards keep their own pointer handling. The rest link through to the full profile.
     return card.interactive ? (
-      <CardFigure profile={profile} card={card.id} live bare calendarLoading={calendarLoading} />
+      <CardFigure profile={profile} card={card.id} live bare calendarLoading={calendarLoading} weather={weather} />
     ) : (
       <a className="embed-card" href={urls.profile(profile.login)} target="_blank" rel="noopener">
-        <CardFigure profile={profile} card={card.id} live={false} bare calendarLoading={calendarLoading} />
+        <CardFigure profile={profile} card={card.id} live={false} bare calendarLoading={calendarLoading} weather={weather} />
       </a>
     );
   }
@@ -52,7 +52,7 @@ export default function CardApp() {
       <nav className="crumbs caption">
         <a href={urls.profile(profile.login)}>@{profile.login}</a> / {card.title}
       </nav>
-      <CardFigure profile={profile} card={card.id} solo calendarLoading={calendarLoading} />
+      <CardFigure profile={profile} card={card.id} solo calendarLoading={calendarLoading} weather={weather} />
     </>
   );
 }

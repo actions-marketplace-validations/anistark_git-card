@@ -10,18 +10,36 @@ Type a GitHub username and get a 3D contribution skyline, an F to SSS rank, stre
 
 It is a static site. Profiles are built in the visitor's browser from public APIs, so there is no server and no token to run it.
 
+<p align="center">
+  <a href="https://anistark.github.io/git-card/u/anistark"><img src="https://anistark.github.io/git-card/cards/anistark/skyline.svg" alt="Contribution skyline for @anistark, with today's weather" width="760" /></a>
+</p>
+
+<p align="center">
+  <a href="https://anistark.github.io/git-card/u/anistark/c/citizen"><img src="https://anistark.github.io/git-card/cards/anistark/citizen.svg" alt="Citizen ID for @anistark: role, clearance and bounty" width="572" /></a>
+</p>
+
+The cards above are live README cards. They are re-rendered every day: the skyline's weather follows the last week of work, and the citizen ID's role and bounty follow how the year went.
+
 ## Use it
 
 | URL                                       | What it is                                           |
 | ----------------------------------------- | ---------------------------------------------------- |
-| `u/?user=<login>`                         | The full profile                                     |
-| `card/?user=<login>&id=<card>`            | One card on its own page, with embed options         |
-| `card/?user=<login>&id=<card>&embed`      | Just the card, for an `<iframe>`                     |
+| `u/<login>`                               | The full profile                                     |
+| `u/<login>/c/<card>`                      | One card on its own page, with embed options         |
+| `u/<login>/c/<card>?embed`                | Just the card, for an `<iframe>`                     |
+| `u/<login>/c/skyline?weather=off`         | The skyline without its weather                      |
+| `vs/<login>/<rival>`                      | Two profiles head to head, with a verdict            |
 | `cards/<login>/<card>[-dark\|-light].svg` | Hosted card image, for the logins the site publishes |
 
 Everything is dark themed for now. The light theme is switched off with `LIGHT_THEME` in `src/cards/style.ts`.
 
-Cards: `skyline`, `rank`, `overview`, `streak`, `heatmap`, `languages`, `top-repos`, `orgs`.
+Cards: `skyline`, `rank`, `citizen`, `overview`, `heatmap`, `streak`, `languages`, `top-repos`, `orgs`.
+
+Some days in the calendar hide easter eggs. Each one hangs a small neon sign on its tower in the skyline, and the profile page lists the ones found.
+
+The `citizen` card is a Night City ID: a role read from how you work (Wirejack, Gatekeeper, Lone Wolf and more), a clearance from your rank and a bounty on your head.
+
+The skyline has weather, read from your last week of work against your own usual week. It changes on its own as the Action re-renders every day. Turn it off with `weather: off` in the Action, or `?weather=off` on a card page.
 
 ### Put a card in a README
 
@@ -56,7 +74,7 @@ READMEs only show images, and GitHub fetches them through its own image proxy, s
 
    Then in your README: `![Contribution skyline](./git-card/skyline.svg)`.
 
-3. **Download.** Every card downloads as a standalone `.svg` from its Embed panel. It will not update by itself.
+3. **Download.** Every card downloads as a standalone `.svg` from its Embed panel, or as a `.png` for X, LinkedIn and anywhere that does not take SVG. The skyline also downloads as an `.stl` you can 3D print. None of them update by themselves.
 
 The 3D view needs JavaScript, so READMEs get the isometric SVG skyline. For the live 3D city, embed the card page in an iframe on a blog or portfolio.
 

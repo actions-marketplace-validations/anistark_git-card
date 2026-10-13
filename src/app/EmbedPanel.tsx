@@ -1,10 +1,13 @@
 import { useEffect, useId, useState } from 'react';
 import { getCard, type CardId } from '../cards/registry';
 import { SIZES } from '../cards/shell';
-import { LIGHT_THEME, standaloneCss, THEME_CHOICES, type Theme } from '../cards/style';
+import { LIGHT_THEME, THEME_CHOICES, type Theme } from '../cards/style';
 import { SITE } from '../site';
 import { track } from '../lib/analytics';
+import { hasCalendar, type Profile } from '../lib/profile';
+import { skylineStl, STL_DEFAULTS, stlFileName } from '../lib/stl';
 import { absolute, urls } from '../lib/urls';
+import { cardPng, cardSvg, download } from './export';
 
 // ---- Hosted snapshots ------------------------------------------------------------------------
 // The Pages workflow pre-renders cards for the logins in SNAPSHOT_USERS and publishes an index.
@@ -32,31 +35,21 @@ function useHosted(login: string, card: CardId): boolean {
   return hosted;
 }
 
-// ---- Standalone SVG from the card already on the page ----------------------------------------------
-
-/** The inline card inherits page styles. A file needs its own tokens, size and namespace. */
-export function standaloneSvg(svg: SVGSVGElement, theme: Theme): string {
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  const { width, height } = svg.viewBox.baseVal;
-  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  clone.setAttribute('width', String(width));
-  clone.setAttribute('height', String(height));
-  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  style.textContent = standaloneCss(theme);
-  clone.insertBefore(style, clone.querySelector('title')?.nextSibling ?? clone.firstChild);
-  return new XMLSerializer().serializeToString(clone);
-}
-
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml' }));
-  const a = Object.assign(document.createElement('a'), { href: url, download: name });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 // ---- UI ----------------------------------------------------------------------------------------
 
-function CopyField({ id, label, value, hint, onCopy }: { id: string; label: string; value: string; hint: string; onCopy: () => void }) {
+export function CopyField({
+  id,
+  label,
+  value,
+  hint,
+  onCopy,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  hint: string;
+  onCopy: () => void;
+}) {
   const [copied, setCopied] = useState<'idle' | 'copied' | 'manual'>('idle');
   const copy = async () => {
     onCopy();
@@ -90,15 +83,100 @@ function CopyField({ id, label, value, hint, onCopy }: { id: string; label: stri
   );
 }
 
+/** A PNG of the card, for X, LinkedIn and anywhere else that does not take SVG. */
+function PngField({ card, file, getSvg, theme }: { card: CardId; file: string; getSvg: () => SVGSVGElement | null; theme: Theme }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'failed'>('idle');
+  const save = async () => {
+    const svg = getSvg();
+    if (!svg || state === 'busy') return;
+    setState('busy');
+    try {
+      download(file, await cardPng(svg, theme));
+      track('download_png', { card });
+      setState('idle');
+    } catch {
+      setState('failed');
+    }
+  };
+  return (
+    <div className="embed-field">
+      <span className="eyebrow">Image</span>
+      <div className="embed-actions">
+        <button type="button" onClick={save} disabled={state === 'busy'}>
+          {state === 'busy' ? 'Rendering' : `Download ${file}`}
+        </button>
+      </div>
+      <p className="caption">
+        {state === 'failed'
+          ? 'The PNG could not be rendered. Try again, or download the SVG.'
+          : 'For X, LinkedIn and anywhere that does not take SVG.'}
+      </p>
+    </div>
+  );
+}
+
+/** The skyline as a 3D printable model. Built from the profile alone, so it works without WebGL. */
+function StlField({ profile }: { profile: Profile }) {
+  const name = stlFileName(profile);
+  const { pitch, margin } = STL_DEFAULTS;
+  const cm = Math.round((profile.weeks.length * pitch + margin * 2) / 10);
+  return (
+    <div className="embed-field">
+      <span className="eyebrow">3D print</span>
+      <div className="embed-actions">
+        <button
+          type="button"
+          onClick={() => {
+            download(name, new Blob([skylineStl(profile)], { type: 'model/stl' }));
+            track('download_stl', { from: 'embed' });
+          }}
+        >
+          Download {name}
+        </button>
+      </div>
+      <p className="caption">{`A printable model of the year in millimetres, about ${cm} cm wide with towers up to ${STL_DEFAULTS.height} mm.`}</p>
+    </div>
+  );
+}
+
+/** The workflow file that keeps cards fresh. Without a login, the Action renders the repo owner. */
+export function actionWorkflow({ login, cards, theme }: { login?: string; cards: string; theme?: Theme }) {
+  const inputs = [login && `username: ${login}`, `cards: ${cards}`, theme && `theme: ${theme}`].filter(Boolean);
+  return `# .github/workflows/git-card.yml in your profile repo
+name: git-card
+on:
+  schedule: [{ cron: '17 3 * * *' }]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ${SITE.action}
+        with:
+${inputs.map((i) => `          ${i}`).join('\n')}
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add git-card
+          git diff --staged --quiet || git commit -m "Update git-card"
+          git push`;
+}
+
 export function EmbedPanel({
   login,
   card,
   getSvg,
+  profile,
   open = false,
 }: {
   login: string;
   card: CardId;
   getSvg: () => SVGSVGElement | null;
+  /** The skyline offers a 3D print of it. */
+  profile?: Profile;
   open?: boolean;
 }) {
   const uid = useId();
@@ -113,28 +191,7 @@ export function EmbedPanel({
   const readmeLink = absolute(urls.profile(login, { source: 'readme', medium: 'card', campaign: card }));
   const copied = (snippet: string) => () => track('copy_snippet', { snippet, card, hosted });
 
-  const action = `# .github/workflows/git-card.yml in your profile repo
-name: git-card
-on:
-  schedule: [{ cron: '17 3 * * *' }]
-  workflow_dispatch:
-permissions:
-  contents: write
-jobs:
-  cards:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: ${SITE.action}
-        with:
-          username: ${login}
-          cards: ${card}${LIGHT_THEME ? `\n          theme: ${theme}` : ''}
-      - run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add git-card
-          git diff --staged --quiet || git commit -m "Update git-card"
-          git push`;
+  const action = actionWorkflow({ login, cards: card, theme: LIGHT_THEME ? theme : undefined });
 
   return (
     <details className="embed" open={open}>
@@ -172,10 +229,10 @@ jobs:
             <div className="embed-actions">
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   const svg = getSvg();
                   if (!svg) return;
-                  download(file, standaloneSvg(svg, theme));
+                  download(file, await cardSvg(svg, theme));
                   track('download_svg', { card });
                 }}
               >
@@ -192,6 +249,8 @@ jobs:
           </>
         )}
 
+        <PngField card={card} file={`${card}${suffix}.png`} getSvg={getSvg} theme={theme} />
+        {card === 'skyline' && profile && hasCalendar(profile) && <StlField profile={profile} />}
         <CopyField
           id={`${uid}-link`}
           label="Link"

@@ -1,3 +1,4 @@
+import { citizenOf } from '../lib/citizen';
 import { fmt } from '../lib/format';
 import type { Profile } from '../lib/profile';
 import { formatStanding, type Rank } from '../lib/rank';
@@ -36,6 +37,7 @@ export function RankBadge({ login, rank, calendarLoading }: { login: string; ran
 
 export function ProfileHeader({ profile, rank, calendarLoading }: { profile: Profile; rank: Rank; calendarLoading?: boolean }) {
   const display = profile.name || profile.login;
+  const { role, trait } = citizenOf(profile, rank);
   const hud = [
     `ONLINE SINCE ${profile.createdAt.slice(0, 4)}`,
     profile.location && `LOC ${profile.location.toUpperCase()}`,
@@ -54,6 +56,10 @@ export function ProfileHeader({ profile, rank, calendarLoading }: { profile: Pro
           {display}
         </h1>
         <p className="profile-hud tabular">{hud}</p>
+        <a className="profile-role eyebrow" href={urls.card(profile.login, 'citizen')} title={role.tagline}>
+          Role // {role.name}
+          {trait ? ` + ${trait.name}` : ''}
+        </a>
         {profile.bio && <p className="caption profile-bio">{profile.bio}</p>}
       </div>
       <div className="profile-side">

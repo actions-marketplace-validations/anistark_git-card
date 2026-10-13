@@ -1,10 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
-import { href, urls } from '../lib/urls';
+import { urls } from '../lib/urls';
+import { SITE } from '../site';
 
 export const prerender = true;
-
-const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
 ---
 
 <Base
@@ -21,7 +20,7 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
       A 3D skyline of your year, your streaks, languages and best repos. Every card has its own link, so you can drop it into a README, a
       blog or a portfolio.
     </p>
-    <form class="lookup" action={href('u/')} method="get" role="search">
+    <form class="lookup" role="search" data-lookup>
       <label for="u" class="eyebrow">
         Target handle
       </label>
@@ -29,7 +28,7 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
         <span class="lookup-at" aria-hidden="true">
           &gt; @
         </span>
-        <input id="u" name="user" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
+        <input id="u" name="login" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
         <button type="submit">Jack in</button>
       </div>
     </form>
@@ -37,7 +36,7 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
       <span>Try</span>
       {/* Commas come from CSS, so formatter line breaks can never put a space before them. */}
       <span class="examples">
-        {examples.map((login) => (
+        {SITE.examples.map((login) => (
           <a href={urls.profile(login)}>@{login}</a>
         ))}
       </span>
@@ -50,17 +49,23 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
     <dl class="url-list tabular">
       <div>
         <dt>
-          u/?user=<em>login</em>
+          u/<em>login</em>
         </dt>
         <dd>The full profile, built in your browser from public GitHub data.</dd>
       </div>
       <div>
         <dt>
-          card/?user=<em>login</em>&amp;id=skyline
+          u/<em>login</em>/c/skyline
         </dt>
         <dd>
-          One card on its own page. Add <code>&amp;embed</code> for an iframe.
+          One card on its own page. Add <code>?embed</code> for an iframe.
         </dd>
+      </div>
+      <div>
+        <dt>
+          vs/<em>login</em>/<em>rival</em>
+        </dt>
+        <dd>Two profiles head to head, with a tale of the tape and a verdict.</dd>
       </div>
       <div>
         <dt>README</dt>
@@ -68,4 +73,56 @@ const examples = ['torvalds', 'gaearon', 'sindresorhus', 'yyx990803'];
       </div>
     </dl>
   </section>
+
+  <section class="versus-home" id="versus">
+    <p class="eyebrow">Versus // head to head</p>
+    <h2 class="title rgb">Settle it.</h2>
+    <form class="lookup versus-form" role="search" data-versus>
+      <label for="vs-home-a" class="eyebrow">
+        Two GitHub usernames
+      </label>
+      <div class="versus-row">
+        <div class="lookup-row hud">
+          <span class="lookup-at" aria-hidden="true">
+            &gt; @
+          </span>
+          <input id="vs-home-a" name="a" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="torvalds" />
+        </div>
+        <span class="versus-vs" aria-hidden="true">
+          vs
+        </span>
+        <div class="lookup-row hud">
+          <span class="lookup-at" aria-hidden="true">
+            &gt; @
+          </span>
+          <input
+            name="b"
+            required
+            aria-label="Rival's GitHub username"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="gaearon"
+          />
+        </div>
+        <button type="submit">Fight</button>
+      </div>
+    </form>
+  </section>
+  <script>
+    import { submitLookup, submitVersus } from '../app/lookup';
+
+    for (const form of document.querySelectorAll<HTMLFormElement>('form[data-lookup]')) {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitLookup(form);
+      });
+    }
+    for (const form of document.querySelectorAll<HTMLFormElement>('form[data-versus]')) {
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        submitVersus(form);
+      });
+    }
+  </script>
 </Base>

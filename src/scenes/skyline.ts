@@ -29,10 +29,9 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import type { WeatherState } from '../lib/weather';
+import { bloomComposer, readPalette, SEA_WAVE } from './common';
+import { addWeather } from './weather';
 
 /** [week, weekday, count, level 0-5, height 0-1, date] */
 export type Cell = [number, number, number, number, number, string];
@@ -42,6 +41,12 @@ interface Options {
   onReady: () => void;
   /** Floats over the hovered tower with its count, kept on top of it as the view moves. Positioned in host pixels. */
   tag?: HTMLElement;
+  /** Easter egg neon signs, each floating over its day's tower like the tag. */
+  signs?: { date: string; text: string }[];
+  /** Today's weather, the same forecast the SVG card draws. */
+  weather?: { state: WeatherState; week: string[] } | null;
+  /** Seeds the weather's scatter. */
+  seed?: string;
 }
 
 const GAP = 0.82;
@@ -49,35 +54,12 @@ const MAX_H = 7;
 const RISE_MS = 1600;
 const SWEEP_MS = 5200; // one scanner pass, including the rest before the next
 
-interface Palette {
-  levels: Color[];
-  sea: Color;
-  peak: Color;
-  surface: Color;
-  signal: Color;
-  night: boolean;
-}
-
-// Same recipe as the CSS level ramp in cards/style.ts, resolved from the live page tokens.
-function readPalette(): Palette {
-  const css = getComputedStyle(document.documentElement);
-  const token = (name: string) => new Color(css.getPropertyValue(name).trim() || '#000');
-  const raised = token('--raised');
-  const data = token('--data');
-  const surface = token('--surface');
-  const mix = (t: number) => new Color().lerpColors(raised, data, t);
-  const night = surface.r * 0.2126 + surface.g * 0.7152 + surface.b * 0.0722 < 0.4;
-  return {
-    levels: [raised, mix(0.3), mix(0.55), mix(0.78), data, token('--hot')],
-    sea: token('--sea'),
-    peak: token('--peak'),
-    surface,
-    signal: token('--accent'),
-    night,
-  };
-}
-
-export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { onHover, onReady, tag }: Options): () => void {
+export function mountSkyline(
+  host: HTMLElement,
+  cells: Cell[],
+  weeks: number,
+  { onHover, onReady, tag, signs = [], weather, seed = '' }: Options,
+): () => void {
   // No calendar, no city. Three.js also cannot build per-tile colors for an empty set.
   if (!cells.length) return () => {};
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -92,7 +74,9 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
   scene.fog = fog;
   const camera = new PerspectiveCamera(30, 1, 1, 400);
   camera.position.set(0, 36, 54);
-  scene.add(new AmbientLight(0xffffff, 1.1));
+  scene.add(camera); // the weather hangs its backdrop on it
+  const ambient = new AmbientLight(0xffffff, 1.1);
+  scene.add(ambient);
   const key = new DirectionalLight(0xffffff, 1.8);
   key.position.set(10, 18, 8);
   const fill = new DirectionalLight(0xffffff, 0.4);
@@ -109,6 +93,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     uBeamColor: { value: new Color() },
     uTime: { value: 0 },
     uWave: { value: reduced ? 0 : 1 },
+    uGlint: { value: weather?.state === 'rain' || weather?.state === 'storm' ? 1 : 0 },
+    uGlintColor: { value: new Color() },
   };
   const geometry = new BoxGeometry(1, 1, 1);
   // 1 for sea tiles (empty days), which the vertex shader moves as waves. Buildings stay put.
@@ -119,7 +105,7 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        '#include <common>\nattribute float aSea;\nuniform float uTime;\nuniform float uWave;\nvarying float vCityX;\nvarying float vCrest;',
+        `#include <common>\nattribute float aSea;\nuniform float uTime;\nuniform float uWave;\nuniform float uGlint;\nvarying float vCityX;\nvarying float vCrest;\nvarying float vGlint;\n${SEA_WAVE}`,
       )
       .replace(
         '#include <project_vertex>',
@@ -127,13 +113,13 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
         #ifdef USE_INSTANCING
           cityPos = instanceMatrix * cityPos;
         #endif
-        // Sea: a swell rolls across every 7 seconds over a faint constant ripple.
-        float front = mix( -40.0, 40.0, mod( uTime, 7.0 ) / 7.0 );
-        float d = cityPos.x + cityPos.z * 0.5 - front;
-        float swell = exp( -d * d / 10.0 );
-        float ripple = sin( cityPos.x * 0.9 + cityPos.z * 1.4 + uTime * 1.5 );
-        cityPos.y += aSea * uWave * ( swell * 0.35 + ripple * 0.03 );
-        vCrest = aSea * uWave * swell;
+        // Sea tiles ride the swell.
+        vec2 wave = seaWave( cityPos.xz, uTime );
+        cityPos.y += aSea * uWave * wave.x;
+        vCrest = aSea * uWave * wave.y;
+        // Rain: each sea tile catches a glint now and then, on its own beat.
+        float seed = fract( sin( dot( cityPos.xz, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+        vGlint = aSea * uGlint * pow( max( 0.0, sin( seed * 40.0 + uTime * ( 1.2 + seed ) ) ), 30.0 );
         vCityX = cityPos.x;
         vec4 mvPosition = modelViewMatrix * cityPos;
         gl_Position = projectionMatrix * mvPosition;`,
@@ -141,7 +127,7 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nvarying float vCityX;\nvarying float vCrest;\nuniform float uGlow;\nuniform float uBeamX;\nuniform vec3 uBeamColor;',
+        '#include <common>\nvarying float vCityX;\nvarying float vCrest;\nvarying float vGlint;\nuniform float uGlow;\nuniform float uBeamX;\nuniform vec3 uBeamColor;\nuniform vec3 uGlintColor;',
       )
       .replace(
         '#include <emissivemap_fragment>',
@@ -150,7 +136,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
           totalEmissiveRadiance += vColor.rgb * uGlow;
           totalEmissiveRadiance += vColor.rgb * vCrest * 0.9; // wave crests catch the light
         #endif
-        totalEmissiveRadiance += uBeamColor * smoothstep( 1.4, 0.0, abs( vCityX - uBeamX ) );`,
+        totalEmissiveRadiance += uBeamColor * smoothstep( 1.4, 0.0, abs( vCityX - uBeamX ) );
+        totalEmissiveRadiance += uGlintColor * vGlint;`,
       );
   };
   const mesh = new InstancedMesh(geometry, material, cells.length);
@@ -187,10 +174,23 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
   beam.visible = false;
   city.add(beam);
 
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new Vector2(1, 1), 0.55, 0.3, 0.62));
-  composer.addPass(new OutputPass());
+  // A tower's full roof, in city coordinates: where it stands once it has risen.
+  const roof = (cell: Cell) => new Vector3(cell[0] - weeks / 2, cell[2] > 0 ? 0.15 + cell[4] * MAX_H : 0.04, cell[1] - 3);
+  const week = new Set(weather?.week);
+  const strike = cells.filter((c) => week.has(c[5]) && c[2] > 0).sort((a, b) => b[4] - a[4])[0];
+  const peakCell = cells.find((c) => c[3] === 5);
+  const sky = weather
+    ? addWeather(city, camera, fog, {
+        state: weather.state,
+        strike: strike ? roof(strike) : null,
+        peak: peakCell ? roof(peakCell) : null,
+        reach: weeks / 2,
+        seed,
+        still: reduced,
+      })
+    : null;
+
+  const composer = bloomComposer(renderer, scene, camera);
 
   let night = true;
   const paint = () => {
@@ -203,6 +203,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     scene.background = palette.surface;
     fog.color.copy(palette.surface);
+    uniforms.uGlintColor.value.copy(palette.rain).multiplyScalar(night ? 1.2 : 0.6);
+    sky?.paint(palette);
     uniforms.uGlow.value = night ? 0.22 : 0;
     uniforms.uBeamColor.value.copy(palette.signal).multiplyScalar(night ? 0.85 : 0.5);
     gridMaterial.color.copy(palette.signal);
@@ -240,17 +242,42 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
   renderer.domElement.style.touchAction = 'pan-y'; // let vertical swipes scroll the page on phones
   controls.update();
 
+  const signEls = signs.flatMap(({ date, text }, i) => {
+    const index = cells.findIndex((c) => c[5] === date && c[2] > 0);
+    if (index < 0) return [];
+    const el = Object.assign(document.createElement('div'), { className: 'sky3d-sign', textContent: text });
+    el.setAttribute('aria-hidden', 'true');
+    el.style.animationDelay = `${i * 1.7}s`;
+    host.appendChild(el);
+    return [{ index, el }];
+  });
+
   function render() {
     if (night) composer.render();
     else renderer.render(scene, camera);
-    placeTag();
+    placeOverlays();
   }
 
-  // The hovered tower's top, projected to the screen every frame, since the city rises, sways and orbits.
+  function placeOverlays() {
+    placeTag();
+    for (const { index, el } of signEls) {
+      el.hidden = index === hovered; // the count tag takes its place
+      if (!el.hidden) el.style.transform = roofAt(index);
+    }
+  }
+
+  // A tower's top, projected to the screen every frame, since the city rises, sways and orbits.
   const instance = new Matrix4();
   const top = new Vector3();
   const turn = new Quaternion();
   const size = new Vector3();
+  function roofAt(index: number) {
+    mesh.getMatrixAt(index, instance);
+    instance.decompose(top, turn, size);
+    top.y += size.y / 2;
+    top.applyMatrix4(mesh.matrixWorld).project(camera);
+    return `translate(${((top.x + 1) / 2) * host.clientWidth}px, ${((1 - top.y) / 2) * host.clientHeight}px) translate(-50%, -100%)`;
+  }
   function placeTag() {
     if (!tag) return;
     const cell = cells[hovered];
@@ -258,12 +285,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
       tag.hidden = true;
       return;
     }
-    mesh.getMatrixAt(hovered, instance);
-    instance.decompose(top, turn, size);
-    top.y += size.y / 2;
-    top.applyMatrix4(mesh.matrixWorld).project(camera);
     tag.textContent = cell[2].toLocaleString();
-    tag.style.transform = `translate(${((top.x + 1) / 2) * host.clientWidth}px, ${((1 - top.y) / 2) * host.clientHeight}px) translate(-50%, -100%)`;
+    tag.style.transform = roofAt(hovered);
     tag.hidden = false;
   }
 
@@ -275,6 +298,7 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    sky?.resize(w / h);
     render();
   };
 
@@ -290,12 +314,12 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     if (hit === hovered) return;
     hovered = hit;
     onHover(hit >= 0 ? cells[hit] : null);
-    placeTag();
+    placeOverlays();
   };
   const onPointerLeave = () => {
     hovered = -1;
     onHover(null);
-    placeTag();
+    placeOverlays();
   };
   renderer.domElement.addEventListener('pointermove', onPointerMove);
   renderer.domElement.addEventListener('pointerleave', onPointerLeave);
@@ -327,6 +351,10 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
       beam.visible = phase <= 1;
       beam.position.x = -reach + phase * reach * 2;
       uniforms.uBeamX.value = beam.visible ? beam.position.x : -999;
+      // Lightning lights up the city for a moment. Only the lights: the background is in linear color, where even a
+      // small step toward white reads as a gray wash.
+      const flash = sky?.update(now / 1000) ?? 0;
+      ambient.intensity = 1.1 + flash * 0.6;
     }
     render();
     if (!reduced || !risen) frame = requestAnimationFrame(tick);
@@ -352,6 +380,7 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
 
   place(() => (reduced ? 1 : 0));
   paint(); // before the first sized render, so the shader compiles with instance colors
+  sky?.update(0); // the still frame, and the first frame of the moving one
   resize();
   play();
   requestAnimationFrame(onReady);
@@ -373,6 +402,8 @@ export function mountSkyline(host: HTMLElement, cells: Cell[], weeks: number, { 
     beam.geometry.dispose();
     beamMaterial.dispose();
     mesh.dispose();
+    for (const { el } of signEls) el.remove();
+    sky?.dispose();
     renderer.dispose();
     renderer.domElement.remove();
   };

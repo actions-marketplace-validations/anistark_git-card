@@ -3,6 +3,7 @@ import type { Profile } from '../lib/profile';
 import { isValidLogin } from '../lib/profile';
 import type { CalendarAttempt } from '../lib/calendar';
 import { CACHE_PREFIX, fetchPublicProfile, PublicApiError, type CalendarState, type Step } from '../lib/public-api';
+import { cardFromPath, loginFromPath } from '../lib/urls';
 
 export type StepState = 'start' | 'done' | 'failed';
 
@@ -24,6 +25,18 @@ export type ProfileState =
 /** Read a query parameter once. Pages are static, so the URL is the only input. */
 export function useParam(name: string): string | null {
   const [value] = useState(() => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get(name)));
+  return value;
+}
+
+/** The profile's login, from the path (u/<login>). */
+export function useLogin(): string | null {
+  const [value] = useState(() => (typeof location === 'undefined' ? null : loginFromPath(location.pathname)));
+  return value;
+}
+
+/** The card page's login and card, from the path (u/<login>/c/<card>). */
+export function useCardRoute(): { login: string | null; card: string } {
+  const [value] = useState(() => (typeof location === 'undefined' ? null : cardFromPath(location.pathname)) ?? { login: null, card: '' });
   return value;
 }
 

@@ -2,6 +2,7 @@ import type { CalendarAttempt } from '../lib/calendar';
 import type { Step } from '../lib/public-api';
 import { PublicApiError } from '../lib/public-api';
 import { href, urls } from '../lib/urls';
+import { submitLookup } from './lookup';
 import type { StepState } from './useProfile';
 
 const STEPS: { key: Step; label: string }[] = [
@@ -95,15 +96,22 @@ export function Lookup({ heading = 'Whose city?' }: { heading?: string }) {
     <section className="hud lookup-panel">
       <p className="eyebrow">Target handle</p>
       <h1 className="title rgb">{heading}</h1>
-      <form className="lookup" action={href('u/')} method="get" role="search">
-        <label htmlFor="user" className="eyebrow">
+      <form
+        className="lookup"
+        role="search"
+        onSubmit={(event) => {
+          event.preventDefault();
+          submitLookup(event.currentTarget);
+        }}
+      >
+        <label htmlFor="login" className="eyebrow">
           GitHub username
         </label>
         <div className="lookup-row hud">
           <span className="lookup-at" aria-hidden="true">
             &gt; @
           </span>
-          <input id="user" name="user" required autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="torvalds" />
+          <input id="login" name="login" required autoComplete="off" autoCapitalize="off" spellCheck={false} placeholder="torvalds" />
           <button type="submit">Jack in</button>
         </div>
       </form>

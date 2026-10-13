@@ -2,14 +2,16 @@ import { useEffect, useMemo } from 'react';
 import { cardsIn } from '../cards/registry';
 import { rankProfile } from '../lib/rank';
 import { CardFigure } from './CardFigure';
+import { Challenge } from './Challenge';
+import { EggSection } from './EggSection';
 import { OrgSection } from './OrgSection';
 import { ProfileHeader } from './ProfileHeader';
 import { CalendarStatus, ErrorView, Lookup, Scanning, Warnings } from './Status';
-import { useParam, useProfile } from './useProfile';
+import { useLogin, useProfile } from './useProfile';
 
-/** /u/?user=login: the whole dashboard, built in the browser from public APIs. */
+/** /u/<login>: the whole dashboard, built in the browser from public APIs. */
 export default function ProfileApp() {
-  const login = useParam('user');
+  const login = useLogin();
   const [state, reload] = useProfile(login);
   const rank = useMemo(() => (state.status === 'ready' ? rankProfile(state.profile) : null), [state]);
 
@@ -26,6 +28,7 @@ export default function ProfileApp() {
   return (
     <>
       <ProfileHeader profile={profile} rank={rank!} calendarLoading={calendarLoading} />
+      <Challenge login={profile.login} />
       <Warnings warnings={warnings} />
       {calendarLoading && <CalendarStatus attempt={calendarAttempt} />}
       <div className="cards">
@@ -33,6 +36,7 @@ export default function ProfileApp() {
           <CardFigure key={id} profile={profile} card={id} calendarLoading={calendarLoading} />
         ))}
       </div>
+      <EggSection profile={profile} />
       <OrgSection profile={profile} />
       <p className="caption fetched">
         Public GitHub data, fetched by your browser at {new Date(profile.fetchedAt).toLocaleString()} and cached for an hour.

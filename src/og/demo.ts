@@ -1,7 +1,21 @@
 import { normalize, type Profile, type RawUser } from '../lib/profile';
+import type { WeatherState } from '../lib/weather';
 
-/** A made-up but believable year for the site's own preview image. Seeded, so the image is stable. */
-export function demoProfile(): Profile {
+// Counts for the last days of the year, newest last, that put the demo city in each weather.
+const TAILS: Record<WeatherState, number[]> = {
+  clear: [2, 9, 11, 8, 10, 12, 3],
+  // A 24 day streak, just past the demo year's best of 22.
+  fireworks: [0, ...Array.from({ length: 24 }, (_, i) => 2 + (i % 5))],
+  storm: [0, 22, 31, 18, 40, 27, 35, 24],
+  fog: Array(20).fill(0),
+  rain: [0, 1, 0, 0, 0, 0, 0],
+};
+
+/**
+ * A made-up but believable year for the site's own preview image. Seeded, so the image is stable. Pass a
+ * weather state to rewrite the last days so the forecast lands on it.
+ */
+export function demoProfile(weather?: WeatherState): Profile {
   let seed = 7;
   const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const start = Date.UTC(2025, 9, 5); // a Sunday
@@ -21,6 +35,12 @@ export function demoProfile(): Profile {
     }
     weeks.push({ contributionDays });
   }
+  const days = weeks.flatMap((w) => w.contributionDays);
+  (weather ? TAILS[weather] : []).forEach((count, i, tail) => {
+    const day = days[days.length - tail.length + i];
+    total += count - day.contributionCount;
+    day.contributionCount = count;
+  });
 
   return normalize(
     {

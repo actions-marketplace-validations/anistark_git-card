@@ -10,11 +10,17 @@ inputs:
     description: GitHub username to render. Defaults to the owner of the repository running the workflow.
     default: ${{ github.repository_owner }}
   cards:
-    description: Comma-separated cards, or "all". skyline, rank, overview, streak, heatmap, languages, top-repos, orgs.
+    description: Comma-separated cards, or "all". skyline, rank, citizen, overview, heatmap, streak, languages, top-repos, orgs.
     default: skyline,rank
   theme:
     description: auto, dark or light. Comma-separate to render several. The light theme is currently switched off, so every option renders dark.
     default: auto
+  weather:
+    description: Weather over the skyline, from your last week of work. on or off.
+    default: 'on'
+  city:
+    description: Your district in Night City, the shared city of everyone running this Action. off keeps you out. Read by the daily census, not by this step.
+    default: 'on'
   output:
     description: Folder in your repository to write the SVGs to.
     default: git-card
@@ -46,5 +52,6 @@ runs:
         GC_USER: ${{ inputs.username }}
         GC_CARDS: ${{ inputs.cards }}
         GC_THEMES: ${{ inputs.theme }}
+        GC_WEATHER: ${{ inputs.weather }}
         GC_OUT: ${{ github.workspace }}/${{ inputs.output }}
-      run: pnpm exec tsx scripts/generate.tsx --users "$GC_USER" --cards "$GC_CARDS" --themes "$GC_THEMES" --out "$GC_OUT" --flat
+      run: pnpm exec tsx scripts/generate.tsx --users "$GC_USER" --cards "$GC_CARDS" --themes "$GC_THEMES" --weather "$GC_WEATHER" --out "$GC_OUT" --flat

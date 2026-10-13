@@ -1,0 +1,22 @@
+---
+import CardApp from '../../../../app/CardApp';
+import { CARD_IDS, getCard } from '../../../../cards/registry';
+import Base from '../../../../layouts/Base.astro';
+import { featuredLogins } from '../../../../lib/featured';
+
+// Every card of a featured login gets a real page, like the profile does. Any other login's cards are served by
+// 404.html, which renders the same card.
+export function getStaticPaths() {
+  return featuredLogins().flatMap((login) => CARD_IDS.map((card) => ({ params: { login, card } })));
+}
+
+const { login, card } = Astro.params;
+const def = getCard(card)!;
+---
+
+<Base title={`${def.title} for @${login} · git-card`} description={`${def.title} for @${login} on GitHub. ${def.description}`}>
+  <CardApp client:only="react" />
+  <noscript>
+    <p class="lead">git-card builds cards in your browser, so it needs JavaScript.</p>
+  </noscript>
+</Base>

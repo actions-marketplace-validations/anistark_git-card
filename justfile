@@ -52,6 +52,14 @@ cards users out="og-out/cards":
 stats:
     GITHUB_TOKEN="${GITHUB_TOKEN:-$(gh auth token)}" pnpm exec tsx scripts/stats.ts --history public/stats.local.json
 
+# Take the city census into public/city.local.json, which city/ reads in dev (uses $GITHUB_TOKEN, or your gh login)
+city:
+    GITHUB_TOKEN="${GITHUB_TOKEN:-$(gh auth token)}" pnpm exec tsx scripts/city.ts --out public/city.local.json
+
+# Write a made-up city of n residents to public/city.local.json, to check the page at scale
+city-fake n="1000":
+    pnpm exec tsx scripts/city.ts --out public/city.local.json --fake {{ n }}
+
 # Rebuild every logo asset (site, favicons, embedded card logo) from assets/brand/git-card-logo.png
 brand:
     node scripts/brand.mjs

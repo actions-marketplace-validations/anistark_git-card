@@ -32,9 +32,12 @@ pnpm-debug.log*
 .claude
 .pi
 .vscode
+plan
 
 # project stats from `just stats`, for /stats in dev
 public/stats.local.json
+# the city census from `just city`, for city/ in dev
+public/city.local.json
 
 # rendered OG previews from `just og`
 og-out/

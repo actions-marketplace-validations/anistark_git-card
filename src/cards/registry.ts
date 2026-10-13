@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import { CitizenCard } from './Citizen';
 import { HeatmapCard } from './Heatmap';
 import { LanguagesCard } from './Languages';
 import { OrgsCard } from './Orgs';
@@ -35,23 +36,29 @@ export const CARDS = {
     size: 'wide',
     Component: RankCard,
   },
+  citizen: {
+    title: 'Citizen ID',
+    description: 'A Night City ID: a role read from how you work, a clearance from your rank and a bounty on your head.',
+    size: 'standard',
+    Component: CitizenCard,
+  },
   overview: {
     title: 'Profile',
     description: 'Name, bio and the headline numbers.',
     size: 'standard',
     Component: OverviewCard,
   },
-  streak: {
-    title: 'Streak',
-    description: 'Current and longest streak, plus which weekdays carry the load.',
-    size: 'standard',
-    Component: StreakCard,
-  },
   heatmap: {
     title: 'Contribution calendar',
     description: 'Every day of the last year, with the peak day called out.',
     size: 'wide',
     Component: HeatmapCard,
+  },
+  streak: {
+    title: 'Streak',
+    description: 'Current and longest streak, plus which weekdays carry the load.',
+    size: 'standard',
+    Component: StreakCard,
   },
   languages: {
     title: 'Languages',

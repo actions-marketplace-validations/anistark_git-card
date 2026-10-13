@@ -1,0 +1,13 @@
+---
+import VersusApp from '../../app/VersusApp';
+import Base from '../../layouts/Base.astro';
+
+// vs/ asks for two handles. vs/<a>/<b> is served by 404.html, which renders the same app with both.
+---
+
+<Base title="Versus · git-card" description="Two GitHub profiles head to head: rank, role, bounty, the tale of the tape and a verdict.">
+  <VersusApp client:only="react" />
+  <noscript>
+    <p class="lead">git-card builds profiles in your browser, so it needs JavaScript.</p>
+  </noscript>
+</Base>

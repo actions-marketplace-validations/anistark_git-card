@@ -1,17 +1,32 @@
 ---
+import PathRoute from '../app/PathRoute';
 import ErrorState from '../components/ErrorState.astro';
 import Base from '../layouts/Base.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 ---
 
 <Base title="Not found · git-card" description="This page does not exist." noindex>
-  <ErrorState status={404} message="There is nothing at this address." />
-  <script>
-    import { urls } from '../lib/urls';
-
-    // Old server-rendered links looked like /u/<login> and /u/<login>/<card>. Send them to the new pages.
-    const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+  <script is:inline define:vars={{ base }}>
+    // Before first paint: GitHub Pages serves this page for profile, card, versus and city paths, so swap the error for
+    // the page.
     const path = location.pathname.startsWith(base) ? location.pathname.slice(base.length) : location.pathname.replace(/^\//, '');
-    const match = path.match(/^u\/([A-Za-z0-9-]{1,39})(?:\/([a-z-]+))?\/?$/);
-    if (match) location.replace(match[2] ? urls.card(match[1], match[2]) : urls.profile(match[1]));
+    if (/^u\/[A-Za-z0-9-]{1,39}\/?$/.test(path)) {
+      document.documentElement.dataset.route = 'profile';
+      document.title = 'Profile · git-card';
+    } else if (/^u\/[A-Za-z0-9-]{1,39}\/c\/[a-z0-9-]+\/?$/.test(path)) {
+      document.documentElement.dataset.route = 'card';
+      document.title = 'Card · git-card';
+    } else if (/^vs\/[A-Za-z0-9-]{1,39}(\/[A-Za-z0-9-]{1,39})?\/?$/.test(path)) {
+      document.documentElement.dataset.route = 'versus';
+      document.title = 'Versus · git-card';
+    } else if (/^city\/[A-Za-z0-9-]{1,39}\/?$/.test(path)) {
+      document.documentElement.dataset.route = 'city';
+      document.title = 'Night City · git-card';
+    }
   </script>
+  <div class="not-found">
+    <ErrorState status={404} message="There is nothing at this address." />
+  </div>
+  <PathRoute client:only="react" />
 </Base>

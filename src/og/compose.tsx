@@ -6,9 +6,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { getCard, type CardId } from '../cards/registry';
 import { chamfer, fmt, Logo, maxChars, Neon, SharedDefs, truncate } from '../cards/shell';
 import { SkylineCity } from '../cards/Skyline';
+import { VersusCard } from '../cards/Versus';
 import { CARD_CSS } from '../cards/style';
 import type { Profile } from '../lib/profile';
 import { formatStanding, rankProfile } from '../lib/rank';
+import { compare } from '../lib/versus';
 import { flattenCss } from './flatten';
 
 export const OG = { width: 1200, height: 630 } as const;
@@ -182,14 +184,26 @@ export function ProfileOg({ profile, avatar }: { profile: Profile; avatar?: stri
   );
 }
 
-/** A single card, scaled up and framed. */
-export function CardOg({ profile, card }: { profile: Profile; card: CardId }) {
+/** A single card, scaled up and framed. Pass the avatar as a data URI for cards that show it, since resvg cannot fetch. */
+export function CardOg({ profile, card, avatar }: { profile: Profile; card: CardId; avatar?: string }) {
   const def = getCard(card)!;
   const box = { x: 70, y: 100, w: OG.width - 140, h: OG.height - 140 };
   return (
     <Frame right={`@${profile.login} // ${def.title.toUpperCase()}`}>
       <svg x={box.x} y={box.y} width={box.w} height={box.h}>
-        <def.Component profile={profile} />
+        <def.Component profile={profile} avatar={avatar} />
+      </svg>
+    </Frame>
+  );
+}
+
+/** Two profiles head to head: the versus card, scaled up and framed. */
+export function VersusOg({ a, b }: { a: Profile; b: Profile }) {
+  const box = { x: 70, y: 100, w: OG.width - 140, h: OG.height - 140 };
+  return (
+    <Frame right={`@${a.login} VS @${b.login}`}>
+      <svg x={box.x} y={box.y} width={box.w} height={box.h}>
+        <VersusCard a={a} b={b} result={compare(a, b)} />
       </svg>
     </Frame>
   );
