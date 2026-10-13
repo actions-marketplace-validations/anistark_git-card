@@ -45,6 +45,18 @@ export interface RepoActivity extends Counts {
   name: string;
 }
 
+/** A repository the user worked in during the last year, with whatever is known about it. */
+export interface Project extends Counts {
+  owner: string;
+  name: string;
+  description: string | null;
+  url: string;
+  stars: number;
+  /** Primary language first. Public APIs only know the primary one. */
+  languages: string[];
+  topics: string[];
+}
+
 /** Everything a user did in the last year in repositories owned by one account. */
 export interface OwnerActivity extends Counts {
   login: string;
@@ -91,6 +103,8 @@ export interface Profile {
   owners: OwnerActivity[];
   /** Public organization memberships, whether or not there was activity. */
   memberOf: Membership[];
+  /** Every public repository with contributions in the last year, most active first. */
+  projects: Project[];
   /** Last-year totals by kind, from GitHub's own counters. Public activity only with a scopeless token. */
   lastYear: Counts;
   /** Days in the last year with at least one contribution. */
@@ -103,6 +117,11 @@ interface RawRepoContributions {
     name: string;
     isPrivate: boolean;
     owner: { __typename: 'Organization' | 'User'; login: string; avatarUrl: string; name?: string | null };
+    description?: string | null;
+    url?: string;
+    stargazerCount?: number;
+    primaryLanguage?: { name: string } | null;
+    topics?: string[];
   };
   contributions: { totalCount: number };
 }
@@ -223,6 +242,7 @@ export function normalize(raw: RawUser, now = new Date()): Profile {
     byWeekday,
     peakDay,
     owners: groupByOwner(raw.contributionsCollection, raw.login),
+    projects: activeProjects(raw.contributionsCollection),
     lastYear: lastYearCounts(raw.contributionsCollection),
     activeDays: days.filter((d) => d.count > 0).length,
     memberOf: raw.organizations?.nodes ?? [],
@@ -249,13 +269,17 @@ const zero = (): Counts => ({ commits: 0, pullRequests: 0, reviews: 0, issues: 0
  * Folds the four per-repository contribution lists into one entry per owner, each with its repos.
  * Private repositories are dropped even if the token can see them, because pages are public.
  */
-export function groupByOwner(cc: RawUser['contributionsCollection'], self: string): OwnerActivity[] {
-  const sources: [Kind, RawRepoContributions[] | undefined][] = [
+function byKind(cc: RawUser['contributionsCollection']): [Kind, RawRepoContributions[] | undefined][] {
+  return [
     ['commits', cc.commitContributionsByRepository],
     ['pullRequests', cc.pullRequestContributionsByRepository],
     ['reviews', cc.pullRequestReviewContributionsByRepository],
     ['issues', cc.issueContributionsByRepository],
   ];
+}
+
+export function groupByOwner(cc: RawUser['contributionsCollection'], self: string): OwnerActivity[] {
+  const sources = byKind(cc);
   const owners = new Map<string, OwnerActivity & { byRepo: Map<string, RepoActivity> }>();
 
   for (const [kind, list] of sources) {
@@ -285,6 +309,50 @@ export function groupByOwner(cc: RawUser['contributionsCollection'], self: strin
   return [...owners.values()]
     .map(({ byRepo, ...owner }) => ({ ...owner, repos: [...byRepo.values()].sort((a, b) => b.total - a.total) }))
     .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login));
+}
+
+/** Folds the four per-repository contribution lists into one entry per repository, most active first. Public only. */
+export function activeProjects(cc: RawUser['contributionsCollection']): Project[] {
+  const projects = new Map<string, Project>();
+  for (const [kind, list] of byKind(cc)) {
+    for (const { repository: r, contributions } of list ?? []) {
+      if (r.isPrivate || contributions.totalCount === 0) continue;
+      const key = `${r.owner.login}/${r.name}`.toLowerCase();
+      let p = projects.get(key);
+      if (!p) {
+        p = {
+          owner: r.owner.login,
+          name: r.name,
+          description: null,
+          url: `https://github.com/${r.owner.login}/${r.name}`,
+          stars: 0,
+          languages: [],
+          topics: [],
+          ...zero(),
+        };
+        projects.set(key, p);
+      }
+      // The same repository shows up once per kind, and not every source knows everything about it.
+      p.description ??= cleanDescription(r.description);
+      if (r.url) p.url = r.url;
+      p.stars = Math.max(p.stars, r.stargazerCount ?? 0);
+      if (!p.languages.length && r.primaryLanguage) p.languages = [r.primaryLanguage.name];
+      if (!p.topics.length && r.topics) p.topics = r.topics;
+      p[kind] += contributions.totalCount;
+      p.total += contributions.totalCount;
+    }
+  }
+  return [...projects.values()].sort((a, b) => b.total - a.total || b.stars - a.stars || a.name.localeCompare(b.name));
+}
+
+/** Drops emoji and :shortcodes:, which the card fonts cannot draw, and squeezes the whitespace. Null when nothing is left. */
+export function cleanDescription(text: string | null | undefined): string | null {
+  const clean = (text ?? '')
+    .replace(/:[a-z0-9_+-]+:/gi, ' ')
+    .replace(/\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|\u{FE0F}|\u{200D}/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return clean || null;
 }
 
 /** Share of public contributions that went to organizations, the user's own repos, and other people's. */

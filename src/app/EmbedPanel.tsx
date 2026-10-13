@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { PROJECTS_DEFAULT, PROJECTS_MAX } from '../cards/Projects';
 import { getCard, type CardId } from '../cards/registry';
 import { SIZES } from '../cards/shell';
 import { LIGHT_THEME, THEME_CHOICES, type Theme } from '../cards/style';
@@ -140,8 +141,13 @@ function StlField({ profile }: { profile: Profile }) {
 }
 
 /** The workflow file that keeps cards fresh. Without a login, the Action renders the repo owner. */
-export function actionWorkflow({ login, cards, theme }: { login?: string; cards: string; theme?: Theme }) {
-  const inputs = [login && `username: ${login}`, `cards: ${cards}`, theme && `theme: ${theme}`].filter(Boolean);
+export function actionWorkflow({ login, cards, theme, projects }: { login?: string; cards: string; theme?: Theme; projects?: number }) {
+  const inputs = [
+    login && `username: ${login}`,
+    `cards: ${cards}`,
+    theme && `theme: ${theme}`,
+    projects && `projects: ${projects} # how many to list, from 1 to ${PROJECTS_MAX}`,
+  ].filter(Boolean);
   return `# .github/workflows/git-card.yml in your profile repo
 name: git-card
 on:
@@ -171,6 +177,7 @@ export function EmbedPanel({
   getSvg,
   profile,
   open = false,
+  projects,
 }: {
   login: string;
   card: CardId;
@@ -178,12 +185,22 @@ export function EmbedPanel({
   /** The skyline offers a 3D print of it. */
   profile?: Profile;
   open?: boolean;
+  /** The projects card's picked length, carried into the links and the Action. */
+  projects?: number;
 }) {
   const uid = useId();
   const [theme, setTheme] = useState<Theme>('auto');
   const hosted = useHosted(login, card);
   const def = getCard(card)!;
-  const { width, height } = SIZES[def.size];
+  const { width } = SIZES[def.size];
+  const height = def.height && profile ? def.height(profile, { projects }) : SIZES[def.size].height;
+  // The site sees a sample of the year, the Action all of it, so "every project here" goes out as the most there is.
+  const total = profile?.projects.length ?? 0;
+  const exported = projects === undefined ? undefined : total && projects >= total ? PROJECTS_MAX : projects;
+  // Only a non-default length goes in the links, so the usual ones stay short.
+  const linkProjects = exported !== PROJECTS_DEFAULT ? exported : undefined;
+  // The hosted image is rendered at the default length, so another one needs the download and the Action.
+  const showHosted = hosted && linkProjects === undefined;
   const suffix = theme === 'auto' ? '' : `-${theme}`;
   const file = `${card}${suffix}.svg`;
   const alt = `${def.title} for @${login}`;
@@ -191,7 +208,13 @@ export function EmbedPanel({
   const readmeLink = absolute(urls.profile(login, { source: 'readme', medium: 'card', campaign: card }));
   const copied = (snippet: string) => () => track('copy_snippet', { snippet, card, hosted });
 
-  const action = actionWorkflow({ login, cards: card, theme: LIGHT_THEME ? theme : undefined });
+  const action = actionWorkflow({
+    login,
+    cards: card,
+    theme: LIGHT_THEME ? theme : undefined,
+    // Spelled out with its default, so the input is easy to find and change.
+    projects: card === 'projects' ? (exported ?? PROJECTS_DEFAULT) : undefined,
+  });
 
   return (
     <details className="embed" open={open}>
@@ -209,7 +232,7 @@ export function EmbedPanel({
           </fieldset>
         )}
 
-        {hosted ? (
+        {showHosted ? (
           <CopyField
             id={`${uid}-md`}
             label="README"
@@ -254,14 +277,14 @@ export function EmbedPanel({
         <CopyField
           id={`${uid}-link`}
           label="Link"
-          value={absolute(urls.card(login, card, { theme }))}
+          value={absolute(urls.card(login, card, { theme, projects: linkProjects }))}
           hint="Share this card on its own page."
           onCopy={copied('link')}
         />
         <CopyField
           id={`${uid}-iframe`}
           label="iframe"
-          value={`<iframe src="${absolute(urls.card(login, card, { embed: true, theme }))}" width="${width}" height="${height}" style="border:0;max-width:100%;aspect-ratio:${width}/${height};height:auto" loading="lazy" title="${alt}"></iframe>`}
+          value={`<iframe src="${absolute(urls.card(login, card, { embed: true, theme, projects: linkProjects }))}" width="${width}" height="${height}" style="border:0;max-width:100%;aspect-ratio:${width}/${height};height:auto" loading="lazy" title="${alt}"></iframe>`}
           hint={
             def.interactive
               ? 'Live and interactive, with the 3D view. For blogs and portfolios.'

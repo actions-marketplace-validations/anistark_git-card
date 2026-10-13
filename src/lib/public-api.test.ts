@@ -5,6 +5,7 @@ import {
   fetchPublicProfile,
   fetchSources,
   genuineCommits,
+  projectCandidates,
   PublicApiError,
   toRawUser,
   type PublicProfile,
@@ -43,6 +44,8 @@ function sources(overrides: Partial<PublicSources> = {}): PublicSources {
       items: [
         {
           name: 'big',
+          owner: { login: 'octo' },
+          topics: [],
           description: null,
           html_url: 'u',
           stargazers_count: 90,
@@ -53,6 +56,8 @@ function sources(overrides: Partial<PublicSources> = {}): PublicSources {
         },
         {
           name: 'small',
+          owner: { login: 'octo' },
+          topics: [],
           description: null,
           html_url: 'u',
           stargazers_count: 5,
@@ -152,6 +157,54 @@ describe('toRawUser', () => {
   it('records public memberships', () => {
     expect(p.memberOf.map((m) => m.login)).toEqual(['acme']);
   });
+
+  it("keeps other people's repos from the search out of the user's own", () => {
+    const lib = {
+      ...sources().repos.items[0],
+      name: 'lib',
+      owner: { login: 'bigco' },
+      description: 'A library',
+      html_url: 'https://github.com/bigco/lib',
+      stargazers_count: 5000,
+      language: 'Rust',
+      topics: ['parser', 'wasm'],
+    };
+    const q = normalize(toRawUser(sources({ repos: { total_count: 3, items: [lib, ...sources().repos.items] } }), NOW), NOW);
+    expect(q.topRepos.map((r) => r.name)).toEqual(['big', 'small']);
+    expect(q.totals.stars).toBe(95);
+    expect(q.projects.find((r) => r.name === 'lib')).toMatchObject({
+      owner: 'bigco',
+      description: 'A library',
+      stars: 5000,
+      languages: ['Rust'],
+      topics: ['parser', 'wasm'],
+      commits: 1,
+      pullRequests: 1,
+    });
+  });
+
+  it('lists active projects with descriptions from commit search', () => {
+    const withDescription = commit('acme', 'api');
+    const s = sources();
+    s.commits!.items[0] = {
+      repository: { ...withDescription.repository, description: 'Acme API', html_url: 'https://github.com/acme/api' },
+    };
+    const q = normalize(toRawUser(s, NOW), NOW);
+    expect(q.projects[0]).toMatchObject({ owner: 'acme', name: 'api', total: 3, description: 'Acme API' });
+    expect(q.projects.map((r) => r.name)).not.toContain('copy');
+  });
+});
+
+describe('projectCandidates', () => {
+  it('ranks repos by sampled activity, without mirrors', () => {
+    expect(projectCandidates(sources(), NOW).map((r) => `${r.owner}/${r.name}:${r.n}`)).toEqual([
+      'acme/api:3',
+      'bigco/lib:2',
+      'octo/dotfiles:1',
+      'someone/tool:1',
+      'unknown-co/thing:1',
+    ]);
+  });
 });
 
 describe('fetchSources', () => {
@@ -188,6 +241,27 @@ describe('fetchSources', () => {
     expect(s.commits).toBeNull();
     expect(s.pullRequests).toEqual({ total_count: 0, items: [] });
     expect(warnings.toSorted()).toEqual(['Commits: search rate limit, try again in a minute.', 'Contribution calendar: unavailable.']);
+  });
+
+  it('folds the busiest repos the user does not own into the repository search', async () => {
+    const s = sources();
+    let repoQuery = '';
+    const fake = async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/users/octo')) return json(user);
+      if (url.includes('/search/repositories')) {
+        repoQuery = new URL(url).searchParams.get('q') ?? '';
+        return json({ total_count: 0, items: [] });
+      }
+      if (url.includes('/search/commits')) return json(s.commits);
+      if (url.includes('/search/issues') && url.includes('type%3Apr') && url.includes('author')) return json(s.pullRequests);
+      if (url.includes('/search/issues')) return json({ total_count: 0, items: [] });
+      if (url.endsWith('/orgs')) return json(s.orgs);
+      if (url.includes('/users/')) return json({ ...user, type: 'User' });
+      return json({}, 500);
+    };
+    await fetchSources('octo', { fetch: fake as typeof fetch, now: NOW, calendarRetryDelayMs: 0 });
+    expect(repoQuery).toBe('user:octo fork:false repo:acme/api repo:bigco/lib repo:someone/tool');
   });
 });
 

@@ -1,5 +1,5 @@
 // GraphQL data source for the README card generator (scripts/generate.tsx).
-import { normalize, type Profile, type RawUser } from './profile';
+import { cleanDescription, normalize, type Profile, type Project, type RawUser } from './profile';
 
 const QUERY = /* GraphQL */ `
   query ($login: String!) {
@@ -105,9 +105,16 @@ const QUERY = /* GraphQL */ `
     }
   }
 
+  # Plain fields only. A nested connection here, like topics, multiplies across 400 repos and times out big accounts.
   fragment Repo on Repository {
     name
     isPrivate
+    description
+    url
+    stargazerCount
+    primaryLanguage {
+      name
+    }
     owner {
       __typename
       login
@@ -118,6 +125,9 @@ const QUERY = /* GraphQL */ `
     }
   }
 `;
+
+/** How many of the most active projects get their full language list and topics, the most the projects card shows. */
+export const PROJECT_DETAILS = 10;
 
 export class GitHubError extends Error {
   constructor(
@@ -161,4 +171,60 @@ export async function fetchProfileGraphQL(login: string, token: string, attempts
   if (body.errors?.some((e) => e.type === 'RATE_LIMITED')) throw new GitHubError('GitHub rate limit reached. Try again soon.', 429);
   if (!body.data?.user) throw new GitHubError(body.errors?.[0]?.message ?? 'Unexpected response from GitHub.', 503);
   return normalize(body.data.user);
+}
+
+interface RawProjectDetails {
+  description: string | null;
+  languages: { nodes: Array<{ name: string }> };
+  repositoryTopics: { nodes: Array<{ topic: { name: string } }> };
+}
+
+/**
+ * Languages and topics for the most active projects, in a second small query (cost 1), since asking for them
+ * in the main one is too heavy. Only the projects card needs it. Best effort: on any failure the profile
+ * keeps the primary languages it already has.
+ */
+export async function withProjectDetails(profile: Profile, token: string, limit = PROJECT_DETAILS): Promise<Profile> {
+  const top = profile.projects.slice(0, limit);
+  if (!top.length) return profile;
+  const vars = top.flatMap((_, i) => [`$o${i}: String!`, `$n${i}: String!`]).join(', ');
+  const fields = top
+    .map(
+      (_, i) => `p${i}: repository(owner: $o${i}, name: $n${i}) {
+        description
+        languages(first: 3, orderBy: { field: SIZE, direction: DESC }) { nodes { name } }
+        repositoryTopics(first: 8) { nodes { topic { name } } }
+      }`,
+    )
+    .join('\n');
+  const variables = Object.fromEntries(
+    top.flatMap((p, i) => [
+      [`o${i}`, p.owner],
+      [`n${i}`, p.name],
+    ]),
+  );
+  try {
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: { authorization: `bearer ${token}`, 'content-type': 'application/json', 'user-agent': 'git-card' },
+      body: JSON.stringify({ query: `query (${vars}) { ${fields} }`, variables }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = ((await res.json()) as { data?: Record<string, RawProjectDetails | null> }).data ?? {};
+    const projects: Project[] = profile.projects.map((p, i) => {
+      const d = i < top.length ? data[`p${i}`] : null;
+      if (!d) return p;
+      const languages = d.languages.nodes.map((l) => l.name);
+      return {
+        ...p,
+        description: p.description ?? cleanDescription(d.description),
+        languages: languages.length ? languages : p.languages,
+        topics: d.repositoryTopics.nodes.map((t) => t.topic.name),
+      };
+    });
+    return { ...profile, projects };
+  } catch (err) {
+    console.warn(`Project details for @${profile.login} skipped: ${(err as Error).message}`);
+    return profile;
+  }
 }

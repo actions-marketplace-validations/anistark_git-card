@@ -17,6 +17,7 @@ describe('urls.card', () => {
   it('links to the card under the profile path', () => {
     expect(urls.card('OctoCat', 'skyline')).toBe('/u/octocat/c/skyline');
     expect(urls.card('octocat', 'top-repos', { embed: true })).toBe('/u/octocat/c/top-repos?embed');
+    expect(urls.card('octocat', 'projects', { embed: true, projects: 20 })).toBe('/u/octocat/c/projects?embed&projects=20');
   });
 
   it('only writes weather into the link when it is off', () => {

@@ -22,6 +22,8 @@ export interface CardLinkOptions {
   theme?: Theme;
   /** False turns the skyline's weather off. */
   weather?: boolean;
+  /** How many projects the projects card lists, when not the default. */
+  projects?: number;
 }
 
 const query = (params: Record<string, string | boolean | undefined>) => {
@@ -68,7 +70,12 @@ export const urls = {
   profile: (login: string, tags?: Utm) => href(`u/${login.toLowerCase()}${query({ ...utm(tags) })}`),
   card: (login: string, card: string, opts: CardLinkOptions = {}) =>
     href(
-      `u/${login.toLowerCase()}/c/${card}${query({ embed: opts.embed, theme: opts.theme, weather: opts.weather === false ? 'off' : undefined })}`,
+      `u/${login.toLowerCase()}/c/${card}${query({
+        embed: opts.embed,
+        theme: opts.theme,
+        weather: opts.weather === false ? 'off' : undefined,
+        projects: opts.projects === undefined ? undefined : String(opts.projects),
+      })}`,
     ),
   /** Two profiles head to head. Without b, the page asks for a rival. */
   versus: (a: string, b?: string) => href(`vs/${a.toLowerCase()}${b ? `/${b.toLowerCase()}` : ''}`),

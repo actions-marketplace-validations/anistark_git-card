@@ -33,7 +33,9 @@ The cards above are live README cards. They are re-rendered every day: the skyli
 
 Everything is dark themed for now. The light theme is switched off with `LIGHT_THEME` in `src/cards/style.ts`.
 
-Cards: `skyline`, `rank`, `citizen`, `overview`, `heatmap`, `streak`, `languages`, `top-repos`, `orgs`.
+Cards: `skyline`, `rank`, `citizen`, `overview`, `heatmap`, `streak`, `languages`, `top-repos`, `projects`, `orgs`.
+
+The `projects` card lists every public repository you worked in over the last 12 months, busiest first, with its description, languages and topics. It shows the top 10. Pick another number from the card on the site, or set `projects` in the Action, up to 50. The card grows taller to fit them.
 
 Some days in the calendar hide easter eggs. Each one hangs a small neon sign on its tower in the skyline, and the profile page lists the ones found.
 

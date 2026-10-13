@@ -589,7 +589,8 @@ section + section {
   margin: 0;
   min-width: 0;
 }
-.card--wide {
+.card--wide,
+.card--tall {
   grid-column: 1 / -1;
 }
 .card svg {
@@ -1746,6 +1747,251 @@ section + section {
   display: block;
   width: 100%;
   height: auto;
+}
+/* The projects card's "TOP 10" picker, laid over the number it replaces. Its trigger scales with the card (the
+   font size comes inline). The menu keeps a readable size of its own, since on a phone the card is tiny. */
+.card-art.has-picker {
+  position: relative;
+}
+.has-picker [data-gc-pick] {
+  visibility: hidden;
+}
+.pick {
+  --cut: 0.45em;
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  margin-left: -0.4em;
+}
+.pick-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  height: 170%;
+  /* On a phone the card, and so the number, is tiny. Keep it easy to tap. */
+  min-height: 28px;
+  min-width: 36px;
+  padding: 0 0.5em 0 0.4em;
+  border: 0;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  color: var(--accent);
+  font: 700 1em / 1 var(--font-display);
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 calc(var(--glow-o) * 40px) var(--glow-c);
+  cursor: pointer;
+  transition:
+    background 120ms,
+    box-shadow 120ms;
+}
+.pick-btn:hover,
+.pick-btn:focus-visible,
+.pick.is-open .pick-btn {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  outline: none;
+}
+/* The trigger's cog. It turns with the wheel. Scoped tighter than the rule that stretches every SVG in a card. */
+.card .pick .pick-gear {
+  display: block;
+  flex: none;
+  width: 0.95em;
+  height: 0.95em;
+  fill: currentColor;
+  filter: drop-shadow(0 0 3px var(--glow-c));
+}
+.pick-value {
+  position: relative;
+}
+
+.pick-panel {
+  --cut: 10px;
+  position: absolute;
+  /* Just under the trigger, which is centered on this box and at least 28px tall. */
+  top: calc(50% + max(85%, 14px) + 6px);
+  left: -12px;
+  width: 260px;
+  padding: 10px 0 10px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    inset 3px 0 0 var(--accent);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, var(--cut) 100%, 0 calc(100% - var(--cut)));
+  filter: drop-shadow(0 0 14px var(--glow-c));
+  font-family: var(--font-display);
+  font-size: var(--t-caption);
+  user-select: none;
+}
+/* The yellow tab every card has on its bottom right corner. */
+.pick-panel::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 28px;
+  height: 3px;
+  background: var(--accent);
+}
+/* Scanlines over the panel, like the cards. */
+.pick-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(to bottom, transparent 0 2px, var(--scan) 2px 3px);
+  pointer-events: none;
+}
+.pick-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0 16px 8px;
+  border-bottom: 1px dashed var(--line);
+  color: var(--muted);
+  font-size: var(--t-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.2em;
+}
+.pick-head > span:first-child::after {
+  content: '_';
+  color: var(--accent);
+}
+.pick-read {
+  color: var(--accent);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 calc(var(--glow-o) * 60px) var(--glow-c);
+}
+
+/* The drum. Teeth are placed by the script round a cylinder: squeezed and dimmed towards the edges. */
+.pick-wheel {
+  position: relative;
+  height: 64px;
+  margin: 8px 10px 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+  background:
+    linear-gradient(to right, var(--surface), transparent 22%, transparent 78%, var(--surface)),
+    linear-gradient(to bottom, var(--raised), transparent 30%, transparent 70%, var(--raised));
+}
+.pick-wheel:active {
+  cursor: grabbing;
+}
+.pick-wheel:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.pick-tooth {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 2px;
+  height: 9px;
+  margin-left: -1px;
+  background: var(--muted);
+  pointer-events: none;
+}
+.pick-tooth.is-major {
+  top: 6px;
+  height: 17px;
+}
+.pick-tooth.is-choice {
+  background: var(--text);
+}
+.pick-tooth b {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.pick-tooth b.is-on {
+  color: var(--accent);
+  text-shadow: 0 0 calc(var(--glow-o) * 50px) var(--glow-c);
+}
+/* The fixed mark the drum turns under: a hard notch on top and a cyan hairline through the middle. */
+.pick-notch {
+  position: absolute;
+  inset: 0 auto 0 50%;
+  width: 1px;
+  background: color-mix(in srgb, var(--data) 70%, transparent);
+  box-shadow: 0 0 6px var(--data);
+  z-index: 1;
+  pointer-events: none;
+}
+.pick-notch::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -6px;
+  width: 13px;
+  height: 7px;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.pick-hint {
+  margin: 8px 16px 0;
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The panel boots in like the rest of the HUD: a stepped wipe from the top. */
+  .pick-panel {
+    animation: pick-boot 180ms steps(4, end);
+  }
+  .pick-head > span:first-child::after {
+    animation: blink 1s steps(1, end) infinite;
+  }
+  /* RGB split on the value while the pointer is on it, the same bad-signal jitter as the cards. */
+  .pick-btn:hover .pick-value::before,
+  .pick-btn:hover .pick-value::after {
+    content: attr(data-text);
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+  }
+  .pick-btn:hover .pick-value::before {
+    color: var(--hot);
+    animation: pick-jit 900ms steps(1, end) infinite;
+  }
+  .pick-btn:hover .pick-value::after {
+    color: var(--data);
+    animation: pick-jit 900ms steps(1, end) infinite reverse;
+  }
+}
+@keyframes pick-boot {
+  from {
+    clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% 0, 100% 0, var(--cut) 0, 0 0);
+  }
+}
+@keyframes pick-jit {
+  0%,
+  100% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-0.08em, 0);
+  }
+  45% {
+    transform: translate(0.1em, -0.04em);
+  }
+  70% {
+    transform: translate(-0.04em, 0.04em);
+  }
 }
 .embed-row {
   align-items: flex-start;
