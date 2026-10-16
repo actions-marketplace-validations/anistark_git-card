@@ -7,10 +7,10 @@ import type { StepState } from './useProfile';
 
 const STEPS: { key: Step; label: string }[] = [
   { key: 'profile', label: 'Profile' },
-  { key: 'repos', label: 'Repositories' },
   { key: 'calendar', label: 'Contribution calendar' },
   { key: 'activity', label: 'Commits, PRs, reviews, issues' },
   { key: 'orgs', label: 'Organizations' },
+  { key: 'repos', label: 'Repositories' },
 ];
 
 export function Scanning({ login, steps }: { login: string; steps: Partial<Record<Step, StepState>> }) {

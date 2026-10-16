@@ -4,7 +4,9 @@ import { HeatmapCard } from './Heatmap';
 import { LanguagesCard } from './Languages';
 import { OrgsCard } from './Orgs';
 import { OverviewCard } from './Overview';
+import { projectsHeight, ProjectsCard } from './Projects';
 import { RankCard } from './Rank';
+import type { Profile } from '../lib/profile';
 import type { CardProps, CardSize } from './shell';
 import { SkylineCard } from './Skyline';
 import { StreakCard } from './Streak';
@@ -17,6 +19,8 @@ export interface CardDef {
   Component: ComponentType<CardProps>;
   /** Has a richer interactive version on its own page. The SVG stays the image and no-JS fallback. */
   interactive?: boolean;
+  /** Height for this profile and these options, for cards that grow with their content. Defaults to the size's height. */
+  height?: (profile: Profile, props?: Pick<CardProps, 'projects'>) => number;
   /** Dashboard section the card lives in. Defaults to the main grid. */
   section?: 'main' | 'orgs';
 }
@@ -71,6 +75,13 @@ export const CARDS = {
     description: 'Most starred public repositories.',
     size: 'standard',
     Component: TopReposCard,
+  },
+  projects: {
+    title: 'Active projects',
+    description: 'Every public repository worked in over the last 12 months, busiest first, with its description, languages and topics.',
+    size: 'tall',
+    Component: ProjectsCard,
+    height: (profile, props) => projectsHeight(profile, props?.projects),
   },
   orgs: {
     title: 'Organizations',

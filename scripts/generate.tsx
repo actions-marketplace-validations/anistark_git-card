@@ -14,9 +14,10 @@ import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { PROJECTS_DEFAULT, PROJECTS_MAX } from '../src/cards/Projects';
 import { CARD_IDS, getCard, type CardId } from '../src/cards/registry';
 import { LIGHT_THEME, type Theme } from '../src/cards/style';
-import { fetchProfileGraphQL } from '../src/lib/github';
+import { fetchProfileGraphQL, withProjectDetails } from '../src/lib/github';
 import { HomeOg, toSvg } from '../src/og/compose';
 import { demoProfile } from '../src/og/demo';
 import { rasterize } from '../src/og/resvg';
@@ -31,6 +32,8 @@ const { values } = parseArgs({
     flat: { type: 'boolean', default: false },
     // Weather over the skyline, from the last week of work. "off" draws the plain city.
     weather: { type: 'string', default: 'on' },
+    // How many projects the projects card lists.
+    projects: { type: 'string', default: String(PROJECTS_DEFAULT) },
     'site-og': { type: 'string' },
   },
 });
@@ -81,10 +84,14 @@ async function cards(users: string[]) {
   if (values.flat && users.length > 1) throw new Error('--flat writes one user per folder. Pass a single user.');
   if (values.weather !== 'on' && values.weather !== 'off') throw new Error(`--weather is "on" or "off", not "${values.weather}".`);
   const weather = values.weather === 'on';
+  const projects = Number(values.projects);
+  if (!Number.isInteger(projects) || projects < 1 || projects > PROJECTS_MAX)
+    throw new Error(`--projects is a whole number from 1 to ${PROJECTS_MAX}, not "${values.projects}".`);
 
   const index: { generatedAt: string; users: Record<string, { cards: string[] }> } = { generatedAt: new Date().toISOString(), users: {} };
   for (const login of users) {
-    const profile = await fetchProfileGraphQL(login, token);
+    const fetched = await fetchProfileGraphQL(login, token);
+    const profile = wanted.includes('projects') ? await withProjectDetails(fetched, token, projects) : fetched;
     const avatar = wanted.includes('citizen') ? await avatarData(profile.avatarUrl) : undefined;
     const dir = values.flat ? values.out! : join(values.out!, profile.login.toLowerCase());
     mkdirSync(dir, { recursive: true });
@@ -92,7 +99,10 @@ async function cards(users: string[]) {
       const { Component } = getCard(id)!;
       for (const theme of themes) {
         const file = join(dir, `${id}${theme === 'auto' ? '' : `-${theme}`}.svg`);
-        writeFileSync(file, renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true, weather, avatar })));
+        writeFileSync(
+          file,
+          renderToStaticMarkup(createElement(Component, { profile, theme, standalone: true, weather, avatar, projects })),
+        );
       }
     }
     index.users[profile.login.toLowerCase()] = { cards: wanted };

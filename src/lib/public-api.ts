@@ -15,6 +15,7 @@ import { normalize, type Profile, type RawUser } from './profile';
 const API = 'https://api.github.com';
 const SAMPLE = 100; // items fetched per activity search, used for the org breakdown
 const OWNER_LOOKUPS = 10; // most extra /users calls spent classifying repo owners as org or user
+const PROJECT_LOOKUPS = 10; // other people's repos folded into the repository search, for the projects card
 
 export class PublicApiError extends Error {
   constructor(
@@ -83,6 +84,8 @@ interface RestOwner {
 
 interface SearchRepo {
   name: string;
+  owner: { login: string };
+  topics: string[];
   description: string | null;
   html_url: string;
   stargazers_count: number;
@@ -93,7 +96,13 @@ interface SearchRepo {
 }
 
 interface SearchCommit {
-  repository: { name: string; private: boolean; owner: RestOwner & { type: 'User' | 'Organization' } };
+  repository: {
+    name: string;
+    private: boolean;
+    owner: RestOwner & { type: 'User' | 'Organization' };
+    description?: string | null;
+    html_url?: string;
+  };
 }
 
 interface SearchIssue {
@@ -109,6 +118,7 @@ interface Search<T> {
 export interface PublicSources {
   user: RestUser;
   orgs: RestOwner[];
+  /** The user's own repos, plus the most active of other people's they worked in. */
   repos: Search<SearchRepo>;
   calendar: Calendar | null;
   commits: Search<SearchCommit> | null;
@@ -207,13 +217,6 @@ export async function fetchSources(
     return c;
   });
 
-  step('repos', 'start');
-  const repos = await get<Search<SearchRepo>>(
-    `${API}/search/repositories?q=${q(`user:${user.login} fork:false`)}&sort=stars&per_page=100`,
-    opts,
-  );
-  step('repos', 'done');
-
   step('activity', 'start');
   const search = <T>(label: string, path: string, query: string, sort: string) =>
     optional(label, warnings, () => get<Search<T>>(`${API}/search/${path}?q=${q(query)}&sort=${sort}&order=desc&per_page=${SAMPLE}`, opts));
@@ -229,6 +232,20 @@ export async function fetchSources(
     (await optional('Organization memberships', warnings, () => get<RestOwner[]>(`${API}/users/${user.login}/orgs`, opts))) ?? [];
   const ownerTypes = await classifyOwners(user, orgs, commits, [pullRequests, reviews, issues], opts);
   step('orgs', 'done');
+
+  // After the activity on purpose: search ORs scope qualifiers, so the same search that lists the user's own repos
+  // also brings language, topics and description for the busiest repos they do not own, at no extra request.
+  step('repos', 'start');
+  const elsewhere = projectCandidates({ user, orgs, commits, pullRequests, reviews, issues }, opts.now ?? new Date())
+    .filter((r) => r.owner.toLowerCase() !== user.login.toLowerCase())
+    .slice(0, PROJECT_LOOKUPS)
+    .map((r) => ` repo:${r.owner}/${r.name}`)
+    .join('');
+  const repos = await get<Search<SearchRepo>>(
+    `${API}/search/repositories?q=${q(`user:${user.login} fork:false${elsewhere}`)}&sort=stars&per_page=100`,
+    opts,
+  );
+  step('repos', 'done');
 
   const rest = { user, orgs, repos, commits, pullRequests, reviews, issues, ownerTypes };
   if (!calendarSettled) onRest?.({ ...rest, calendar: null }, [...warnings]);
@@ -297,6 +314,7 @@ type RepoContributions = NonNullable<RawUser['contributionsCollection']['commitC
 function byRepository(
   items: { owner: string; name: string; private?: boolean }[],
   types: Record<string, 'User' | 'Organization'>,
+  meta = new Map<string, RepoMeta>(),
 ): RepoContributions {
   const counts = new Map<string, { owner: string; name: string; private: boolean; n: number }>();
   for (const it of items) {
@@ -311,6 +329,7 @@ function byRepository(
       isPrivate: c.private,
       // Unclassified owners count as people, so a guess can never inflate the organization numbers.
       owner: { __typename: types[c.owner.toLowerCase()] ?? 'User', login: c.owner, avatarUrl: `https://github.com/${c.owner}.png?size=96` },
+      ...meta.get(`${c.owner}/${c.name}`.toLowerCase()),
     },
     contributions: { totalCount: c.n },
   }));
@@ -321,7 +340,10 @@ function byRepository(
  * Only count commits in repos where the work plausibly happened: the person's own repos, organizations they
  * are a public member of, and repos where they also opened PRs, reviewed or filed issues.
  */
-export function genuineCommits(s: PublicSources): { owner: string; name: string; private: boolean }[] {
+type Activity = Pick<PublicSources, 'user' | 'orgs' | 'commits' | 'pullRequests' | 'reviews' | 'issues'>;
+type Item = { owner: string; name: string; private?: boolean };
+
+export function genuineCommits(s: Activity): { owner: string; name: string; private: boolean }[] {
   const self = s.user.login.toLowerCase();
   const members = new Set(s.orgs.map((o) => o.login.toLowerCase()));
   const engaged = new Set(
@@ -350,16 +372,61 @@ export function calendarWeeks(
   return weeks;
 }
 
-export function toRawUser(s: PublicSources, now = new Date()): RawUser {
+/** The sampled last-year activity, one item per contribution, as each per-repository list counts it. */
+function contributionItems(s: Activity, now: Date): Record<'commits' | 'pullRequests' | 'reviews' | 'issues', Item[]> {
   const since = iso(new Date(now.getTime() - 365 * 86_400_000));
   const issueItems = (search: Search<SearchIssue> | null, recentOnly: boolean) =>
     (search?.items ?? [])
       .filter((i) => !recentOnly || i.created_at.slice(0, 10) >= since)
       .map((i) => ({ owner: ownerOf(i.repository_url), name: repoOf(i.repository_url) }));
+  return {
+    commits: genuineCommits(s),
+    // All-time PR search, so only the PRs inside the window count.
+    pullRequests: issueItems(s.pullRequests, true),
+    reviews: issueItems(s.reviews, false),
+    issues: issueItems(s.issues, false),
+  };
+}
 
+/** Public repos with sampled activity, busiest first. */
+export function projectCandidates(s: Activity, now = new Date()): { owner: string; name: string; n: number }[] {
+  const counts = new Map<string, { owner: string; name: string; n: number }>();
+  for (const it of Object.values(contributionItems(s, now)).flat()) {
+    if (it.private) continue;
+    const key = `${it.owner}/${it.name}`.toLowerCase();
+    const entry = counts.get(key) ?? { owner: it.owner, name: it.name, n: 0 };
+    entry.n++;
+    counts.set(key, entry);
+  }
+  return [...counts.values()].sort((a, b) => b.n - a.n);
+}
+
+type RepoMeta = Pick<RepoContributions[number]['repository'], 'description' | 'url' | 'stargazerCount' | 'primaryLanguage' | 'topics'>;
+
+/** What the repository and commit searches say about each repo, keyed by lowercase owner/name. */
+function repoMeta(s: PublicSources): Map<string, RepoMeta> {
+  const meta = new Map<string, RepoMeta>();
+  for (const { repository: r } of s.commits?.items ?? []) {
+    if (r.description) meta.set(`${r.owner.login}/${r.name}`.toLowerCase(), { description: r.description, url: r.html_url });
+  }
+  for (const r of s.repos.items) {
+    meta.set(`${r.owner.login}/${r.name}`.toLowerCase(), {
+      description: r.description,
+      url: r.html_url,
+      stargazerCount: r.stargazers_count,
+      primaryLanguage: r.language ? { name: r.language } : null,
+      topics: r.topics,
+    });
+  }
+  return meta;
+}
+
+export function toRawUser(s: PublicSources, now = new Date()): RawUser {
   // Calendar sources can include a few days past "today" in some timezones; keep the last 371 at most.
   const days = (s.calendar?.contributions ?? []).filter((d) => d.date <= iso(now)).slice(-371);
-  const recentPrs = issueItems(s.pullRequests, true);
+  const items = contributionItems(s, now);
+  const meta = repoMeta(s);
+  const own = s.repos.items.filter((r) => r.owner.login.toLowerCase() === s.user.login.toLowerCase());
 
   return {
     login: s.user.login,
@@ -376,7 +443,7 @@ export function toRawUser(s: PublicSources, now = new Date()): RawUser {
     issues: { totalCount: s.issues?.total_count ?? 0 },
     repositories: {
       totalCount: s.user.public_repos,
-      nodes: s.repos.items.map((r) => ({
+      nodes: own.map((r) => ({
         name: r.name,
         description: r.description,
         url: r.html_url,
@@ -392,24 +459,25 @@ export function toRawUser(s: PublicSources, now = new Date()): RawUser {
     contributionsCollection: {
       totalCommitContributions: s.commits?.total_count ?? 0,
       // All-time PR search, so the last-year count is what the sample shows inside the window.
-      totalPullRequestContributions: recentPrs.length,
+      totalPullRequestContributions: items.pullRequests.length,
       totalPullRequestReviewContributions: s.reviews?.total_count ?? 0,
       totalIssueContributions: s.issues?.total_count ?? 0,
       contributionCalendar: {
         totalContributions: s.calendar?.total ?? days.reduce((n, d) => n + d.count, 0),
         weeks: calendarWeeks(days),
       },
-      commitContributionsByRepository: byRepository(genuineCommits(s), s.ownerTypes),
-      pullRequestContributionsByRepository: byRepository(recentPrs, s.ownerTypes),
-      pullRequestReviewContributionsByRepository: byRepository(issueItems(s.reviews, false), s.ownerTypes),
-      issueContributionsByRepository: byRepository(issueItems(s.issues, false), s.ownerTypes),
+      commitContributionsByRepository: byRepository(items.commits, s.ownerTypes, meta),
+      pullRequestContributionsByRepository: byRepository(items.pullRequests, s.ownerTypes, meta),
+      pullRequestReviewContributionsByRepository: byRepository(items.reviews, s.ownerTypes, meta),
+      issueContributionsByRepository: byRepository(items.issues, s.ownerTypes, meta),
     },
   };
 }
 
 // ---- Entry point with a short-lived local cache ------------------------------------------------
 
-export const CACHE_PREFIX = 'gc:profile:v1:';
+// Bump when the Profile shape changes, so cached profiles from before do not reach cards that expect more.
+export const CACHE_PREFIX = 'gc:profile:v2:';
 const TTL_MS = 60 * 60 * 1000;
 
 export async function fetchPublicProfile(login: string, opts: FetchOptions = {}): Promise<PublicProfile> {

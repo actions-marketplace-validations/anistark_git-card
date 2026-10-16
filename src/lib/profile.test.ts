@@ -2,9 +2,21 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { leveller } from '../cards/levels';
+import { projectChoice, projectChoices, projectsHeight, ProjectsCard, shownProjects } from '../cards/Projects';
 import { CARD_IDS, getCard } from '../cards/registry';
 import { truncate, wrap } from '../cards/shell';
-import { computeStreaks, groupByOwner, hasCalendar, isValidLogin, normalize, ownershipSplit, type Day, type RawUser } from './profile';
+import {
+  activeProjects,
+  cleanDescription,
+  computeStreaks,
+  groupByOwner,
+  hasCalendar,
+  isValidLogin,
+  normalize,
+  ownershipSplit,
+  type Day,
+  type RawUser,
+} from './profile';
 import { rankProfile } from './rank';
 
 const NOW = new Date('2026-10-01T12:00:00Z');
@@ -191,6 +203,122 @@ describe('groupByOwner', () => {
 
   it('splits work between orgs, own repos and other people', () => {
     expect(ownershipSplit(owners)).toEqual({ org: 71, self: 25, user: 2 });
+  });
+});
+
+describe('activeProjects', () => {
+  const withMeta = {
+    ...orgActivity,
+    pullRequestContributionsByRepository: [
+      {
+        ...repo('acme', 'api', 5),
+        repository: {
+          ...repo('acme', 'api', 5).repository,
+          description: 'The :rocket: API',
+          stargazerCount: 12,
+          primaryLanguage: { name: 'Go' },
+          topics: ['grpc'],
+        },
+      },
+      repo('nodejs', 'node', 3),
+      repo('someone', 'lib', 2, 'User'),
+    ],
+  };
+  const projects = activeProjects(withMeta as RawUser['contributionsCollection']);
+
+  it('lists every public repository once, busiest first', () => {
+    expect(projects.map((p) => `${p.owner}/${p.name}:${p.total}`)).toEqual([
+      'acme/api:45',
+      'octo-dev/dotfiles:25',
+      'nodejs/node:15',
+      'acme/web:11',
+      'someone/lib:2',
+    ]);
+  });
+
+  it('keeps what any source knew about a repository', () => {
+    expect(projects[0]).toMatchObject({
+      description: 'The API',
+      stars: 12,
+      languages: ['Go'],
+      topics: ['grpc'],
+      commits: 40,
+      pullRequests: 5,
+    });
+    expect(projects[1]).toMatchObject({ description: null, languages: [], url: 'https://github.com/octo-dev/dotfiles' });
+  });
+});
+
+describe('projects card', () => {
+  const withProjects = (n: number) => ({
+    ...normalize(rawUser([1, 2, 3]), NOW),
+    projects: Array.from({ length: n }, (_, i) => ({
+      owner: 'octo-dev',
+      name: `repo-${i}`,
+      description: null,
+      url: 'u',
+      stars: 0,
+      languages: [],
+      topics: [],
+      commits: n - i,
+      pullRequests: 0,
+      reviews: 0,
+      issues: 0,
+      total: n - i,
+    })),
+  });
+  const viewBox = (svg: string) => svg.match(/viewBox="([^"]+)"/)?.[1];
+
+  it('lists 10 by default, up to 50 when asked, and never more than there are', () => {
+    expect(shownProjects(withProjects(25))).toBe(10);
+    expect(shownProjects(withProjects(25), 20)).toBe(20);
+    expect(shownProjects(withProjects(80), 99)).toBe(50);
+    expect(shownProjects(withProjects(25), 0)).toBe(1);
+    expect(shownProjects(withProjects(3), 20)).toBe(3);
+  });
+
+  it('grows a row at a time, but is never shorter than the other cards', () => {
+    expect(projectsHeight(withProjects(25))).toBe(580);
+    expect(projectsHeight(withProjects(25), 20)).toBe(1020);
+    expect(projectsHeight(withProjects(2))).toBe(400);
+    expect(projectsHeight(withProjects(0))).toBe(400);
+  });
+
+  it('sizes the SVG to match', () => {
+    const svg = renderToStaticMarkup(createElement(ProjectsCard, { profile: withProjects(25), projects: 20 }));
+    expect(viewBox(svg)).toBe('0 0 760 1020');
+    expect(svg).toContain('TOP <tspan data-gc-pick="">20</tspan>');
+    expect(renderToStaticMarkup(createElement(ProjectsCard, { profile: withProjects(4) }))).toContain('<tspan data-gc-pick="">ALL</tspan>');
+    expect(viewBox(renderToStaticMarkup(createElement(getCard('projects')!.Component, { profile: withProjects(25) })))).toBe('0 0 760 580');
+  });
+});
+
+describe('projectChoices', () => {
+  const labels = (total: number, current?: number) => projectChoices(total, current).map((c) => c.label);
+
+  it('offers the choices below the total, then ALL for the rest', () => {
+    expect(labels(25)).toEqual(['5', '10', '15', '20', 'ALL']);
+    expect(labels(23)).toEqual(['5', '10', '15', '20', 'ALL']);
+    expect(labels(80)).toEqual(['5', '10', '15', '20', '25', '50']);
+    expect(labels(4)).toEqual(['ALL']);
+  });
+
+  it('keeps a number from a link that is not one of the choices', () => {
+    expect(labels(40, 7)).toEqual(['5', '7', '10', '15', '20', '25', 'ALL']);
+  });
+
+  it('lands on ALL once a limit covers every project', () => {
+    expect(projectChoice(23, 10)).toBe(10);
+    expect(projectChoice(23, 50)).toBe(25);
+    expect(projectChoice(25, 25)).toBe(25);
+  });
+});
+
+describe('cleanDescription', () => {
+  it('drops emoji and shortcodes the card fonts cannot draw', () => {
+    expect(cleanDescription('🚀 Fast :zap: builds  for\nall')).toBe('Fast builds for all');
+    expect(cleanDescription(':tada:')).toBeNull();
+    expect(cleanDescription(null)).toBeNull();
   });
 });
 

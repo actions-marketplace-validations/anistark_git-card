@@ -31,11 +31,15 @@ export interface CardProps {
   weather?: boolean;
   /** The avatar as a data URI, for standalone SVGs, which cannot load remote images. Defaults to the profile's URL. */
   avatar?: string;
+  /** How many projects the projects card lists. Defaults to 10. */
+  projects?: number;
 }
 
 export const SIZES = {
   standard: { width: 572, height: 400 },
   wide: { width: 760, height: 400 },
+  /** Wide, with room for long lists. Cards of this size can grow taller with their content. */
+  tall: { width: 760, height: 580 },
 } as const;
 
 export type CardSize = keyof typeof SIZES;
@@ -52,6 +56,8 @@ interface ShellProps extends CardProps {
   label: string;
   /** Bottom left text. Defaults to the profile's @login. */
   footer?: string;
+  /** Overrides the size's height, for cards whose length depends on their content. */
+  height?: number;
   children: ReactNode;
 }
 
@@ -83,8 +89,9 @@ export function chamfer(w: number, h: number, inset = 0.5, cut = CUT) {
   return `M${l},${t} H${r - cut} L${r},${t + cut} V${b} H${l + cut} L${l},${b - cut} Z`;
 }
 
-export function Shell({ id, tag, size, eyebrow, label, footer, profile, theme = 'auto', standalone, children }: ShellProps) {
-  const { width, height } = SIZES[size];
+export function Shell({ id, tag, size, eyebrow, label, footer, profile, theme = 'auto', standalone, children, ...rest }: ShellProps) {
+  const { width } = SIZES[size];
+  const height = rest.height ?? SIZES[size].height;
   const titleId = `gc-title-${id}-${profile.login}`;
   const bleedId = `gc-bleed-${id}-${profile.login}`;
   const clipId = `gc-clip-${id}-${profile.login}`;
